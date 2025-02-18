@@ -11,7 +11,7 @@
         "table_ori": ...,
         "qa": {
             "question": "The question",
-            "exe_ans": "The answer", # Could be numeric or textual e.g. "yes" ~77 in train
+            "exe_ans": "The answer", # Could be numeric or textual e.g. "yes" ~77 in train. Only one word.
 
             "program": "op1, op2",
             "program_re": "op2(op1)",

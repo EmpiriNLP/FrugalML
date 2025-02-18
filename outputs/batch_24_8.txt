@@ -1,0 +1,96 @@
+Question: what is the the interest expense in 2009?
+Correct Answer: 3.8
+Model Answer: $3.8 million
+--------------------------------------------------
+Question: during the 2012 year , did the equity awards in which the prescribed performance milestones were achieved exceed the equity award compensation expense for equity granted during the year?
+Correct Answer: yes
+Model Answer: No
+--------------------------------------------------
+Question: what was the total operating expenses in 2018 in millions
+Correct Answer: 41932.20339
+Model Answer: $42,130
+--------------------------------------------------
+Question: what percentage of total cash and investments as of dec . 29 2012 was comprised of available-for-sale investments?
+Correct Answer: 0.53232
+Model Answer: (14001 / 26302) *
+--------------------------------------------------
+Question: what is the growth rate in net revenue in 2008?
+Correct Answer: -0.03219
+Model Answer: (959.2 - 991.1
+--------------------------------------------------
+Question: what was the growth rate of the loans held-for-sale that are carried at locom from 2009 to 2010
+Correct Answer: 0.97656
+Model Answer: ((2.5-1.6)/
+--------------------------------------------------
+Question: for acquired customer-related and network location intangibles , what is the expected annual amortization expenses , in millions?
+Correct Answer: 7.385
+Model Answer: To find the expected annual amortization expense,
+--------------------------------------------------
+Question: in 2019 what was the percent of the net earnings to the net cash provided by operating activities
+Correct Answer: 0.63634
+Model Answer: 115%
+--------------------------------------------------
+Question: what percentage decrease occurred from 2011-2012 for deferred acquisition payments?
+Correct Answer: 96.55172
+Model Answer: (34.8 - 1.2
+--------------------------------------------------
+Question: how is net change in cash from financing activity affected by the share repurchase during december 20018 , ( in millions ) ?
+Correct Answer: 56.57146
+Model Answer: -175
+--------------------------------------------------
+Question: what is the change in net assets from 2007 to 2008?
+Correct Answer: 6.9
+Model Answer: $6.9 million
+--------------------------------------------------
+Question: in millions , what is the total of home equity lines of credit?
+Correct Answer: 22929.0
+Model Answer: $15553 + $7376 = $229
+--------------------------------------------------
+Question: what is the percent of the labor-related deemed claim as part of the total reorganization items net in 2013
+Correct Answer: 0.65273
+Model Answer: 1733 / 2655 = 0
+--------------------------------------------------
+Question: what is the percent change in net revenue between 2007 and 2008?
+Correct Answer: -0.00317
+Model Answer: -0.46
+--------------------------------------------------
+Question: in 2013 what percentage of total net revenues for the investing & lending segment were due to debt securities and loans?
+Correct Answer: 0.27743
+Model Answer: (1947 + 1850) /
+--------------------------------------------------
+Question: what percentage of total reorganization items net consisted of labor-related deemed claim?
+Correct Answer: 0.65644
+Model Answer: 1733 / 2640 = 0
+--------------------------------------------------
+Question: what was the percent of the total contractual payment obligations that was associated with operating lease obligations
+Correct Answer: 0.2023
+Model Answer: (37788 / 186792) *
+--------------------------------------------------
+Question: what was the percent of the total long-term debt including current portion excluding capital lease obligations that was due in 2019
+Correct Answer: 0.12032
+Model Answer: 726.6 / 6039.0
+--------------------------------------------------
+Question: what percent of total facilities are leased?
+Correct Answer: 0.03614
+Model Answer: (2014 + 2 + 2
+--------------------------------------------------
+Question: as part of the proceeds from the clear wire transactions what was the percent of the gain recognized included in the equity investments , net on the consolidated statements of income .
+Correct Answer: 0.93404
+Model Answer: 439 / 470 = 0.933
+--------------------------------------------------
+Question: on what percent of trading days were there market gains above $ 210 million?
+Correct Answer: 0.04598
+Model Answer: 12 / 261 = 0.046
+--------------------------------------------------
+Question: in february 2016 what was the percent reduction in the board of directors authorized the repurchase to the february 2014
+Correct Answer: -0.16667
+Model Answer: $2 billion
+--------------------------------------------------
+Question: in millions between 2014 and 2013 , what was the change in net derivative liabilities under bilateral agreements?\\n
+Correct Answer: 13588.0
+Model Answer: -13588
+--------------------------------------------------
+Question: what was the net notional amounts of purchases and sales under sfas 140 in 2003 ( us$ b ) ?
+Correct Answer: 7.0
+Model Answer: $23 billion
+--------------------------------------------------
