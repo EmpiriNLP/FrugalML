@@ -21,6 +21,9 @@ def json_to_tsv(json_data: dict) -> pd.DataFrame:
             "post_text": preprocess_text(item["post_text"]),
             "question": item["qa"]["question"],
             "answer": item["qa"]["exe_ans"],
+            "gold_inds": "\n".join(item["qa"]["gold_inds"]),
+            "program": item["qa"]["program"]
+
         })
     return pd.DataFrame(data)
 
