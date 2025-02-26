@@ -45,7 +45,6 @@ quant_config = BitsAndBytesConfig(
     
 - The regexp in clean answer was amended to remove the trailing ? which was matching all numbers.
 
-    # percent_match = re.search(r'[-+]?\d*\.?\d+\s*%?', text)
     percent_match = re.search(r'[-+]?\d*\.?\d+\s*%', text)
     
 Initial results
