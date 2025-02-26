@@ -21,14 +21,15 @@ The first file to be checked in, inf3.py, has the following functionality:
         "Final Answer (number only): "
     )
 ```    
-- Note that this does not include any details of the "program" since this would represent a data leak.
 - Processes train3.json (This is the first 22 entries of the train.json file).
-- Processes both the expected answer and the predicted answer to maximize the likelihood of a match. Note that this is very much a hack just to get something working, and is one of the things that needs further thought (see next steps below).
-- Displays the number of exact matches and percentage accuracy. Also displays total time and avg inference time.
+- Note that this input does not include any details of the "program" since this would represent a data leak.
+- Processes both the expected answer and the predicted answer to maximize the likelihood of a match e.g. rounds to nearest integer. Note that this is very much a hack just to get something working, and is one of the items that needs further thought (see next steps below).
+- Displays the number of exact matches and percentage accuracy.
+- Also displays total time and avg inference time.
 
 Learnings/bug-fixes:
 
-- The experiments were done on an Amazon EC2 g4dn.4xlarge server which has an NVidiai Tesla T$ GPU with 32Gb VRAM.
+- The experiments were done on an Amazon EC2 g4dn.4xlarge server which has an NVidiai Tesla T5 GPU with 32Gb VRAM.
 - Quantization was required to enable Llama-3.1-8B-Instruct to fit within VRAM.  The following quantization config was used:
 ```
 quant_config = BitsAndBytesConfig(
@@ -43,7 +44,7 @@ quant_config = BitsAndBytesConfig(
     #generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
     generated_text = tokenizer.decode(outputs[:, input_ids.shape[-1]:][0], skip_special_tokens=True)
 ```   
-- The regexp in clean answer was amended to remove the trailing ? which was matching all numbers.
+- The regexp in clean_answer was amended to remove the trailing ? which was matching all numbers (not just percentages).
 ```
 #    percent_match = re.search(r'[-+]?\d*\.?\d+\s*%?', text)
     percent_match = re.search(r'[-+]?\d*\.?\d+\s*%', text)
@@ -77,17 +78,17 @@ Next steps
 ==========
 This first check-in is very rough and was only submitted in case it was useful for the rest of the team.
 
-The results are in no way a meaningful baseline, do at least demonstrate a model getting more than 50% of the questions broadly correct.
+The results are in no way a meaningful baseline, but they do at least demonstrate a working pipeline where the model is getting more than 50% of the questions  correct.
 
-There are plenty of improvements needed!
+However, there are plenty of improvements needed!
 
 Short term, I will tidy the code more and make it much easier to switch model and run the pipeline on different datasets.  I will also fix any other bugs I find. 
 
-Longer term, I think the work breaks down into the following tasks:
+Following this, I think the work breaks down into the following tasks:
 
-- Refine Task / Loss Function. This is probably the next critical thing to finalise before we can move on to fine tuning. If we continue to pursue the idea of having the LLM emit the correct numerical answer directly, then we need to establish a way of matching the result in a way which will create a useful signal with which to fine-tune the model. Alternatively, we may want to explore the approach used by the papers we've been looking at, of creating an intermediate "program" instead.  
+- Refine Task / Loss Function. This is probably the next critical thing to finalise before we can move on to fine tuning (Because if we were to experiment with fine tuning first, then we would need to redo much of the work if we changed the task or loss function). If we continue to pursue the idea of having the LLM emit the correct numerical answer directly, then we need to establish a way of matching the result in a way which will create a useful loss signal with which to fine-tune the model. Alternatively, we may want to explore the approach used by the most of the papers we've been looking at; namely, the notion of using the LLM to create an intermediate "program" by parsing the "question", extracting the relevant operands from the supplied prompt, and forming the correct sequence of mathematical operations to satisfy the question.  
 
-- Fine-tuning methodology.  Once we have a satisfactory Task / Loss Function and stable pipeline, we can move on to exploring fine-tuning methodologies, ideally using an industruy standard framework (from hf) which allows us to switch between the approaches with minor code changes, and using the same fine tuning data set. Start with QLORA.
+- Fine-tuning methodology.  Once we have a satisfactory Task / Loss Function and stable pipeline, we can move on to exploring fine-tuning methodologies, ideally using an industruy standard framework (from hf) which allows us to switch between the approaches with minor code changes, and using the same fine tuning data set. A good starting point may be QLORA.
 
-- Cost Function.  This can be done last. It basically changes what we record on the x-axis, and allows us to compare the M+FT approaches on the basis of a cost versus accuracy trade-off, rather than accuracy alone.
+- Cost Function.  This can probably be done last, before we run the final experiments. It basically changes what we record on the x-axis, and allows us to compare the M+FT approaches on the basis of a cost versus accuracy trade-off, rather than accuracy alone.
   
