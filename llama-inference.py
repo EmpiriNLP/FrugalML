@@ -46,25 +46,45 @@ def load_dataset(dataset_directory: str, split: str = "train"):
     return tsv_data
 
 @log_time("info", process_name="Preprocess Context")
-def preprocess_context(context: pd.Series, tokeniser: AutoTokenizer):
+def preprocess_context(context: pd.Series, tokeniser: AutoTokenizer, chat_template: bool = False):
 
-    q_cols = ["pre_text", "table", "post_text", "question"]
-    data = context[q_cols].copy()
+    relevant_info = context["gold_inds"]
+    table_str = context["table"]
+    question = context["question"]
+    program = context["program"]
 
-    template = [
-        {"role": "system", "content": "You are a financial expert assistant that uses numerical reasoning to answer questions from snippets of text and tables. Provide strictly only the answer in one number or word."},
-        {"role": "user", "content": "\n".join(data.values)}
-    ]
+    # Broken
+    if chat_template:
+        template = [
+            {"role": "system", "content": "You are a financial expert assistant that uses numerical reasoning to answer questions from snippets of text and tables. Provide strictly only the answer in one number or word."},
+            {"role": "user", "content": "\n".join(data.values)}
+        ]
+        tokeniser.pad_token = tokeniser.eos_token
+        inputs = tokeniser.apply_chat_template(template, tokenize=True, add_generation_prompt=True, return_tensors="pt", return_attention_mask=True, truncation=True, padding="max_length", max_length=2048)
+
+        return inputs
+
+    input_text = (
+        "You are a financial calculator. Follow these steps:\n"
+        "1. Read the question carefully\n"
+        "2. Look at the relevant information and table data\n"
+        "3. Follow the mathematical operation exactly\n"
+        "4. Return ONLY the final numerical answer with no text\n\n"
+        f"Relevant Information:\n{relevant_info}\n\n"
+        f"Table Data:\n{table_str}\n\n"
+        f"Question: {question}\n"
+        f"Mathematical Operation: {program}\n"
+        "Final Answer (number only): "
+    )
 
     tokeniser.pad_token = tokeniser.eos_token
+    inputs = tokeniser(input_text, return_tensors="pt", truncation=True, padding="max_length", max_length=2048)
 
-    input_ids = tokeniser.apply_chat_template(template, tokenize=True, add_generation_prompt=True, return_tensors="pt", return_attention_mask=True, truncation=True, padding="max_length", max_length=2048)
-    
-    return input_ids
+    return inputs
 
 @log_time("debug", process_name="Generate Message")
 def generate_answer(inputs: list[int], model: AutoModelForCausalLM, tokeniser: AutoTokenizer):
-    # inputs = torch.tensor(inputs).unsqueeze(0).to(model.device) # input ids and attention mask
+    inputs = {k: v.to(model.device) for k, v in inputs.items()} 
     output = model.generate(**inputs, max_new_tokens=10, pad_token_id=tokeniser.eos_token_id, eos_token_id=tokeniser.eos_token_id)
 
     return tokeniser.decode(output[0], skip_special_tokens=True)
