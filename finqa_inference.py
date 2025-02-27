@@ -5,19 +5,23 @@ import pandas as pd
 import numpy as np
 from datasets import load_metric
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+import time
+from huggingface_hub import login
 
 # Model initialization
 def initialize_model():
-    model_name = "microsoft/Phi-3-mini-4k-instruct"
+    model_name = "meta-llama/Llama-3.1-8B-Instruct"
+    # model_name = "microsoft/Phi-3-mini-4k-instruct"
+    # model_name = "meta-llama/Llama-3.2-3B-Instruct"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
     # Initialize with 4-bit quantization for better memory efficiency
-    quantization_config = BitsAndBytesConfig(load_in_4bit=True)
+    # quantization_config = BitsAndBytesConfig(load_in_4bit=True)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.float16,
         device_map="auto",
-        quantization_config=quantization_config
+        # quantization_config=quantization_config
     )
     return model, tokenizer
 
@@ -117,7 +121,7 @@ def generate_answer(example, model, tokenizer):
 
 def evaluate_model(test_data, model, tokenizer, num_samples=10):
     """Evaluate model performance"""
-    metric = load_metric("squad")
+    metric = load_metric("squad", trust_remote_code=True)
     predictions = []
     references = []
     
@@ -125,6 +129,7 @@ def evaluate_model(test_data, model, tokenizer, num_samples=10):
     
     for i, example in enumerate(test_data[:num_samples]):
         try:
+            start_time = time.time()
             pred_text = generate_answer(example, model, tokenizer)
             true_text = example["qa"]["answer"]
             
@@ -141,6 +146,7 @@ def evaluate_model(test_data, model, tokenizer, num_samples=10):
             print(f"❓ Question: {example['qa']['question']}")
             print(f"✅ Ground Truth: {true_text}")
             print(f"🤖 Prediction: {pred_text}")
+            print(f"⏱️ Time taken: {time.time() - start_time}")
             print(f"📊 Metrics - Exact Match: {em}, F1: {f1:.2f}")
             
         except Exception as e:
@@ -150,18 +156,20 @@ def evaluate_model(test_data, model, tokenizer, num_samples=10):
     results = metric.compute(predictions=predictions, references=references)
     print("\n📊 Overall Results:", results)
     return results
+    # return None
 
 def main():
     # Initialize model and tokenizer
     model, tokenizer = initialize_model()
+    tokenizer.pad_token = tokenizer.eos_token
     print("Model initialized successfully!")
     
     # Load datasets
-    test_data = load_finqa_dataset("/cs/student/projects2/aisd/2024/giliev/FinQA/dataset/test.json")
+    test_data = load_finqa_dataset("D:/datasets/EmpiriNLP/FinQA/dataset/test.json")
     print("Dataset loaded successfully!")
     
     # Evaluate model
-    results = evaluate_model(test_data, model, tokenizer, num_samples=10)
+    results = evaluate_model(test_data, model, tokenizer, num_samples=8)
     
     # Save results
     with open("evaluation_results.json", "w") as f:
