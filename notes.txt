@@ -1,0 +1,109 @@
+finance-qa-lora/
+│── data/
+│   ├── train.json        # Training dataset
+│   ├── val.json          # Validation dataset
+│   ├── test.json         # Test dataset
+│   ├── preprocess.py     # Data preprocessing script
+│
+│── models/
+│   ├── base_model/       # Pretrained model (if locally stored)
+│   ├── lora_adapters/    # Checkpoints for LoRA adapters
+│
+│── scripts/
+│   ├── train.py          # Fine-tuning script with LoRA
+│   ├── evaluate.py       # Model evaluation script
+│   ├── infer.py          # Script for inference on new questions
+│   ├── utils.py          # Helper functions (loading model, tokenization, etc.)
+│
+│── configs/
+│   ├── lora_config.json  # LoRA-specific configuration
+│   ├── training_config.json  # General training configurations (batch size, LR, etc.)
+│
+│── notebooks/
+│   ├── exploration.ipynb # Jupyter notebook for dataset exploration
+│   ├── testing.ipynb     # Notebook for quick inference testing
+│
+│── logs/
+│   ├── training.log      # Training logs
+│   ├── eval.log          # Evaluation logs
+│
+│── requirements.txt      # Dependencies
+│── README.md             # Project documentation
+│── .gitignore            # Ignore checkpoints, logs, large datasets
+
+
+
+1. data/: Contains financial QA datasets and a script (preprocess.py) to format the data into the required structure (e.g., SQuAD-like format if applicable).
+2. models/: Stores the base model (if not downloaded dynamically) and LoRA adapter checkpoints.
+3. scripts/:
+    train.py: Implements fine-tuning using LoRA (e.g., via peft in Hugging Face).
+    evaluate.py: Measures performance on financial QA tasks.
+    infer.py: Runs inference on test questions.
+    utils.py: Utility functions (e.g., dataset loading, tokenizer setup, logging).
+4. configs/: JSON files to store hyperparameters for easy modification.
+5. notebooks/: Jupyter notebooks for quick debugging and testing.
+6. logs/: Training and evaluation logs for tracking progress.
+7. Root Files:
+    requirements.txt for dependencies.
+    README.md to document setup and usage.
+    .gitignore to exclude unnecessary files.
+
+Models:
+from the python finetuning paper
+PHI3 variants (3.5B and 14B parameters)
+MISTRAL 7B
+ORCA-2 configurations (7B and 13B parameters)
+
+encoders:
+longformer
+BigBird
+reformer
+linformer
+(Longformer Encoder-Decoder)
+
+Fine tuning methods
+LoRA
+Qlora
+
+Commonly Used Additive PEFT Methods
+Adapters
+
+Serial Adapter: One of the earliest and most straightforward adapter methods.
+
+AdapterFusion: Combines multiple adapters for multi-task learning.
+
+Parallel Adapter (PA): Improves computational efficiency by running adapters in parallel.
+
+Soft Prompt
+
+Prefix-tuning: Prepend learnable vectors to the input sequence.
+
+p-tuning v2: An improved version of p-tuning that removes reparameterization.
+
+Prompt-tuning: Adjusts continuous prompt vectors for better task adaptation.
+
+Commonly Used Reparameterized PEFT Methods
+LoRA (Low-Rank Adaptation)
+
+LoRA: Introduces low-rank matrices to adapt pre-trained weights.
+
+DyLoRA (Dynamic Low-Rank Adaptation): Dynamically adjusts the rank during training.
+
+AdaLoRA (Adaptive Low-Rank Adaptation): Uses singular value decomposition for adaptive rank adjustment.
+
+Commonly Used Hybrid PEFT Methods
+UniPELT: Integrates multiple PEFT methods (LoRA, prefix-tuning, and adapters) with a gating mechanism.
+
+Commonly Used Efficient PEFT Design Methods
+Quantization Strategies
+
+QLoRA (Quantized LoRA): Combines quantization with LoRA for memory efficiency.
+
+LoRQ (LoRA-Fine-Tuning-aware Quantization): Optimizes quantization for LoRA fine-tuning.
+
+compute tracking:
+papi
+pynvml
+
+alternate leaderboard:
+https://huggingface.co/spaces/Aiera/aiera-finance-leaderboard
