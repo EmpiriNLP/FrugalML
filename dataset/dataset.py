@@ -15,7 +15,7 @@ class FinQADataset(Dataset):
             max_length (int, optional): Maximum length for tokenization. Defaults to 512.
         """
         file_path = os.path.join(os.path.dirname(__file__), json_file)
-        with open(json_file, 'r', encoding='utf-8') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             self.data = json.load(f)
         self.tokenizer = tokenizer
         self.max_length = max_length
