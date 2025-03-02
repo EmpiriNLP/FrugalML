@@ -5,11 +5,16 @@ from fuzzywuzzy import fuzz
 import re
 
 # Load Llama-3.2-1B
-#MODEL_ID = "microsoft/Phi-3.5-mini-instruct"
-#MODEL_ID = "meta-llama/Llama-3.2-1B-Instruct"
+# MODEL_ID = "microsoft/Phi-3.5-mini-instruct"
+# MODEL_ID = "meta-llama/Llama-3.2-1B-Instruct"
 MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
+# MODEL_ID = "microsoft/Phi-3-mini-4k-instruct"
+# MODEL_ID = "meta-llama/Llama-3.2-3B-Instruct"
+
 DEVICE = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
 print(DEVICE)
+
+SETTING = ""
 
 # Define 4-bit quantization configuration
 quant_config = BitsAndBytesConfig(
@@ -109,7 +114,7 @@ def generate_answer(input_text):
     input_ids = inputs["input_ids"]  # Explicitly access input_ids tensor
 
     with torch.no_grad():
-        outputs = model.generate(**inputs, temperature=0.1, top_k=10)
+        outputs = model.generate(**inputs, temperature=0.1, top_k=10, max_new_tokens=20)
     #generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
     generated_text = tokenizer.decode(outputs[:, input_ids.shape[-1]:][0], skip_special_tokens=True)
 
@@ -178,7 +183,7 @@ for example in dataset:
 
 
     # Compute similarity score
-#    similarity = fuzz.ratio(clean_p.lower(), expected_answer.lower())
+    # similarity = fuzz.ratio(predicted_answer.lower(), expected_answer.lower())
     similarity = fuzz.ratio(clean_p.lower(), clean_e.lower())
     similarity_scores.append(similarity)
     print()
@@ -202,6 +207,8 @@ for example in dataset:
 # Print Results
 accuracy = correct_predictions / total_samples * 100
 avg_similarity = sum(similarity_scores) / total_samples
+
+print(f"*************************************{SETTING}***********************************")
 
 print(f"Total Samples: {total_samples}")
 print(f"Correct Predictions: {correct_predictions}")
