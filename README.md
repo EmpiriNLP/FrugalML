@@ -29,7 +29,7 @@ The first file to be checked in, inf3.py, has the following functionality:
 
 Learnings/bug-fixes:
 
-- The experiments were done on an Amazon EC2 g4dn.4xlarge server which has an NVidiai Tesla T5 GPU with 32Gb VRAM.
+- The experiments were done on an Amazon EC2 g4dn.4xlarge server which has an NVidia Tesla T4 GPU with 32Gb VRAM.
 - Quantization was required to enable Llama-3.1-8B-Instruct to fit within VRAM.  The following quantization config was used:
 ```
 quant_config = BitsAndBytesConfig(
