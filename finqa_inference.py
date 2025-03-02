@@ -10,18 +10,18 @@ from huggingface_hub import login
 
 # Model initialization
 def initialize_model():
-    model_name = "meta-llama/Llama-3.1-8B-Instruct"
+    # model_name = "meta-llama/Llama-3.1-8B-Instruct"
     # model_name = "microsoft/Phi-3-mini-4k-instruct"
-    # model_name = "meta-llama/Llama-3.2-3B-Instruct"
+    model_name = "meta-llama/Llama-3.2-3B-Instruct"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
     # Initialize with 4-bit quantization for better memory efficiency
-    # quantization_config = BitsAndBytesConfig(load_in_4bit=True)
+    quantization_config = BitsAndBytesConfig(load_in_4bit=True)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.float16,
         device_map="auto",
-        # quantization_config=quantization_config
+        quantization_config=quantization_config
     )
     return model, tokenizer
 
@@ -169,7 +169,7 @@ def main():
     print("Dataset loaded successfully!")
     
     # Evaluate model
-    results = evaluate_model(test_data, model, tokenizer, num_samples=8)
+    results = evaluate_model(test_data, model, tokenizer, num_samples=3)
     
     # Save results
     with open("evaluation_results.json", "w") as f:
