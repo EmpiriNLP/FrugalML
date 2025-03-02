@@ -8,20 +8,28 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import time
 from huggingface_hub import login
 
+DEVICE = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
+
+
 # Model initialization
 def initialize_model():
-    # model_name = "meta-llama/Llama-3.1-8B-Instruct"
+    model_name = "meta-llama/Llama-3.1-8B-Instruct"
     # model_name = "microsoft/Phi-3-mini-4k-instruct"
-    model_name = "meta-llama/Llama-3.2-3B-Instruct"
+    # model_name = "meta-llama/Llama-3.2-3B-Instruct"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
     # Initialize with 4-bit quantization for better memory efficiency
-    quantization_config = BitsAndBytesConfig(load_in_4bit=True)
+    quant_config = BitsAndBytesConfig(
+        load_in_4bit=True,  # Enable 4-bit quantization
+        bnb_4bit_compute_dtype=torch.float16,  # Use FP16 for computation
+        bnb_4bit_use_double_quant=True,  # Double quantization for better memory efficiency
+        bnb_4bit_quant_type="nf4"  # NormalFloat4, best for Llama models
+    )    
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.float16,
-        device_map="auto",
-        quantization_config=quantization_config
+        device_map={"": DEVICE},
+        quantization_config=quant_config
     )
     return model, tokenizer
 
@@ -45,24 +53,20 @@ def preprocess_example(example, tokenizer):
     
     input_text = (
         "You are a financial calculator. Follow these steps:\n"
-        "1. Read the question carefully\n"
-        "2. Look at the relevant information and table data\n"
-        "3. Follow the mathematical operation exactly\n"
-        "4. Return ONLY the final numerical answer with no text\n\n"
-        f"Relevant Information:\n{relevant_info}\n\n"
+        "Return ONLY the final numerical answer with no text explanation\n\n"
+        f"Pre Text Data:\n{pre_text}\n\n"
         f"Table Data:\n{table_str}\n\n"
+        f"Post Text Data:\n{post_text}\n\n"
         f"Question: {question}\n"
-        f"Mathematical Operation: {program}\n"
         "Final Answer (number only): "
     )
 
     return tokenizer(
         input_text,
         truncation=True,
-        padding="max_length",
         max_length=2048,
         return_tensors="pt"
-    )
+    ).to(DEVICE)
 
 def clean_answer(text):
     """Extract and format numerical answer"""
@@ -101,22 +105,26 @@ def clean_answer(text):
 def generate_answer(example, model, tokenizer):
     """Generate answer using Phi-3"""
     inputs = preprocess_example(example, tokenizer)
-    inputs = {k: v.to(model.device) for k, v in inputs.items()}
+    input_ids = inputs["input_ids"]  # Explicitly access input_ids tensor
 
     with torch.no_grad():
-        output = model.generate(
-            **inputs,
-            max_new_tokens=10,
-            do_sample=False,
-            num_beams=5,
-            temperature=0.1,
-            top_p=0.95,
-            early_stopping=True,
-            pad_token_id=tokenizer.pad_token_id,
-            eos_token_id=tokenizer.eos_token_id
-        )
+        outputs = model.generate(**inputs, temperature=0.1, top_k=10, max_new_tokens=20)
+        # outputs = model.generate(
+        #     **inputs,
+        #     max_new_tokens=20,
+        #     do_sample=False,
+        #     num_beams=5,
+        #     temperature=0.1,
+        #     top_p=0.95,
+        #     early_stopping=True,
+        #     pad_token_id=tokenizer.pad_token_id,
+        #     eos_token_id=tokenizer.eos_token_id
+        # )
 
-    generated_text = tokenizer.decode(output[0], skip_special_tokens=True)
+
+    # generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    generated_text = tokenizer.decode(outputs[:, input_ids.shape[-1]:][0], skip_special_tokens=True)
+
     return clean_answer(generated_text)
 
 def evaluate_model(test_data, model, tokenizer, num_samples=10):
@@ -153,6 +161,13 @@ def evaluate_model(test_data, model, tokenizer, num_samples=10):
             print(f"Error processing example {i}: {str(e)}")
             continue
     
+    try:
+        results = metric.compute(predictions=predictions, references=references)
+        print("\n📊 Overall Results:", results)
+        return results
+    except ZeroDivisionError as e:
+        print("Error computing overall results:", str(e))
+        return None
     results = metric.compute(predictions=predictions, references=references)
     print("\n📊 Overall Results:", results)
     return results
@@ -161,7 +176,7 @@ def evaluate_model(test_data, model, tokenizer, num_samples=10):
 def main():
     # Initialize model and tokenizer
     model, tokenizer = initialize_model()
-    tokenizer.pad_token = tokenizer.eos_token
+    # tokenizer.pad_token = tokenizer.eos_token
     print("Model initialized successfully!")
     
     # Load datasets
