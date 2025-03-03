@@ -3,68 +3,50 @@ import os
 from torch.utils.data import Dataset
 
 class FinQADataset(Dataset):
-    def __init__(self, json_file, tokenizer=None, max_length=512):
-        """
-        Initializes the FinQA dataset.
-
-        Args:
-            json_file (str): Path to the JSON file (train.json or test.json).
-            tokenizer (callable, optional): A function to tokenize the text input.
-                For example, a tokenizer from Hugging Face Transformers.
-                If None, the raw question string will be returned.
-            max_length (int, optional): Maximum length for tokenization. Defaults to 512.
-        """
-        file_path = os.path.join(os.path.dirname(__file__), json_file)
+    def __init__(self, file_path):
+        # Load the JSON data from file_path
         with open(file_path, 'r', encoding='utf-8') as f:
             self.data = json.load(f)
-        self.tokenizer = tokenizer
-        self.max_length = max_length
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         item = self.data[idx]
-        # Extract the question text. Adjust the key if your JSON uses a different field.
-        question = item.get("question", "")
-        # Extract the label (e.g., answer) if available; test set items may not have a label.
-        label = item.get("answer", None)
+        
+        # Directly extract pre_text, table, and post_text from the top-level keys
+        pre_text = item.get('pre_text', '')
+        table = item.get('table', '')
+        post_text = item.get('post_text', '')
+        
+        # Extract QA information
+        qa = item.get('qa', {})
+        question = qa.get('question', '')
+        program = qa.get('program', '')
+        
+        # Create the context by concatenating pre_text, table, and post_text
+        context = f"{pre_text}\n{table}\n{post_text}".strip()
+        
+        # Generate the prompt using the given format
+        prompt = f"""
+        Context:
+        {context}
 
-        if self.tokenizer:
-            # Tokenize the question. The tokenizer should return a dictionary containing tensors.
-            inputs = self.tokenizer(
-                question,
-                truncation=True,
-                padding="max_length",
-                max_length=self.max_length,
-                return_tensors="pt"
-            )
-            # Remove the batch dimension (from shape [1, seq_len] to [seq_len]).
-            inputs = {key: tensor.squeeze(0) for key, tensor in inputs.items()}
-        else:
-            inputs = question
-
-        return {"inputs": inputs, "label": label}
-
+        Given the context, {question} Report your answer using the following format:
+        Explanation: Explanation of calculation
+        Formatted answer: Number with two decimal point precision and no units
+        """.strip()
+        
+        return {
+            'context': context,
+            'question': question,
+            'label': program,
+            'prompt': prompt
+        }
 
 if __name__ == "__main__":
-    # Example usage:
-    # If you plan to use a Hugging Face tokenizer, import it and load one.
-    from transformers import AutoTokenizer
-
-    # Initialize a tokenizer (change the model name as needed).
-    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-
-    # Create dataset instances for training and testing.
-    train_dataset = FinQADataset("train.json", tokenizer=tokenizer)
-    test_dataset = FinQADataset("test.json", tokenizer=tokenizer)
-
-    print(f"Number of training examples: {len(train_dataset)}")
-    print(f"Number of test examples: {len(test_dataset)}")
-
-    # Display a sample from the training dataset.
-    sample = train_dataset[0]
-    print("\nSample training data:")
-    print("Tokenized Input IDs:", sample["inputs"]["input_ids"])
-    print("Attention Mask:", sample["inputs"]["attention_mask"])
-    print("Label:", sample["label"])
+    file_path = os.path.join(os.getcwd(), "./dataset/train.json")
+    dataset = FinQADataset(file_path)
+    sample = dataset[0]
+    print("Prompt:\n", sample['prompt'])
+    print("Label:\n", sample['label'])
