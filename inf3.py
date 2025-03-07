@@ -3,6 +3,14 @@ from datasets import Features, Value, load_dataset, Sequence
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from fuzzywuzzy import fuzz
 import re
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MODEL_DIR = os.getcwd() + "/models"
+access_token = os.getenv("HUGGINGFACE_API_KEY")
+
 
 # Load Llama-3.2-1B
 #MODEL_ID = "microsoft/Phi-3.5-mini-instruct"
@@ -24,9 +32,15 @@ quant_config = BitsAndBytesConfig(
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map={"": DEVICE},
-    quantization_config=quant_config
+    quantization_config=quant_config,
+    token=access_token,
+    cache_dir=MODEL_DIR
 )
-tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+tokenizer = AutoTokenizer.from_pretrained(
+    MODEL_ID, 
+    token=access_token,
+    cache_dir=MODEL_DIR
+)
 
 def preprocess_function(example):
     # Ensure 'qa' exists and has 'question' and 'answer'
