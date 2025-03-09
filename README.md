@@ -2,6 +2,43 @@
 
 This project is part of the COMP0087: Statistical Natural Language Processing module at University College London (UCL). The primary objective is to compare the computational resources required by different combinations of training techniques and models to achieve a specified performance level. Performance will be evaluated using Exact Match Accuracy (EmAcc), while computational cost will be measured in Floating Point Operations (FLOPs).
 
+
+## Project Setup Guide (Computer Labs)
+1. Set Up the Virtual Environment
+
+    Run the following commands to create and activate a Python virtual environment:
+    ```bash
+    python3 -m venv env
+    source env/bin/activate.csh 
+    pip install -r requirements.txt
+    mkdir -p models
+    ```
+2. Create .env file
+
+    Inside the project directory, create a .env file and add your Hugging Face API key:
+    ```
+    HUGGINGFACE_API_KEY=your_secret_token_here
+    ```
+3. Ensure the Code Runs in the Virtual Environment
+    To ensure the project runs inside the virtual environment:
+    - **In Terminal**: Always activate the environment before running the code:
+        ```
+        source env/bin/activate.csh
+        python your_script.py
+        ```
+    - **In VS Code**: Change the Python interpreter:
+        - Open Command Palette (```Ctrl + Shift + P```).
+        - Search for "Python: Select Interpreter" and select it.
+        - Choose the interpreter inside your virtual environment: ```./env/bin/python```
+
+4. Deactivate the Virtual Environment
+
+    When you're done working, deactivate the virtual environment by running:
+    ```bash
+    deactivate
+    ```
+
+## Experiment overview
 The first file to be checked in, inf3.py, has the following functionality:
 
 - Sets up 4-bit quantization
