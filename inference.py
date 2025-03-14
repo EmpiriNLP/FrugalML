@@ -21,11 +21,10 @@ DATSET_DIR = os.getenv("DATASET_DIR") + "FinQA/dataset/"
 
 def main():
     model, tokenizer = load_model(MODEL_ID, DEVICE, ACCESS_TOKEN, MODEL_DIR)
-    train_dataset = load_preprocessed_dataset("json", data_files=os.getcwd()+"/train3.json", split="train")
-    # TODO: Bug in the full dataset, exe_ans is not the main cause
-    # train_dataset = load_preprocessed_dataset("json", data_files=DATSET_DIR+"train.json", split="train")
+    train_dataset = load_preprocessed_dataset("json", data_files=DATSET_DIR+"/train.cleaned.json", split="train")
 
-    number_of_samples = 22
+
+    number_of_samples = 100
     train_dataset = train_dataset.select(range(number_of_samples))
 
     correct_predictions = 0
@@ -47,6 +46,10 @@ def main():
 
         if similarity >= threshold:
             correct_predictions += 1
+
+        # Log every 10% of the dataset
+        if number_of_samples >=100 and (i + 1) % (number_of_samples // 10) == 0:
+            logging.info(f"Processed {i + 1} / {(i+1)/number_of_samples*100:.2f}%")
 
     end = time.time()
 
