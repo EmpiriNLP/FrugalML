@@ -24,7 +24,7 @@ def main():
     train_dataset = load_preprocessed_dataset("json", data_files=DATSET_DIR+"/train.cleaned.json", split="train")
 
 
-    number_of_samples = 100
+    number_of_samples = len(train_dataset)
     train_dataset = train_dataset.select(range(number_of_samples))
 
     correct_predictions = 0

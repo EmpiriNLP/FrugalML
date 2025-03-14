@@ -1,0 +1,55 @@
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
+from peft import AdapterConfig, get_peft_model
+from datasets import load_dataset
+
+# Step 1: Load Pretrained LLama Model and Tokenizer
+MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
+model = AutoModelForCausalLM.from_pretrained(MODEL_ID, device_map="auto", load_in_8bit=True)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+
+# Step 2: Adapter Configuration
+adapter_config = AdapterConfig(
+    adapter_size=64,  # Bottleneck size of adapters (down-projection dimension)
+    adapter_dropout=0.1,  # Dropout within adapters
+    target_modules=["q_proj", "v_proj", "ff_proj"],  # Insert adapters in attention & FFN layers
+    bottleneck_distribution="equal",  # Distribute equally across QKV and FFN
+    task_type="CAUSAL_LM",  # Define task type for causal language modeling
+)
+
+# Wrap the model with adapters
+model = get_peft_model(model, adapter_config)
+
+# Step 3: Load Dataset and Preprocess
+def preprocess_function(example):
+    return {
+        "input_ids": tokenizer(example["input_text"], max_length=512, truncation=True, padding="max_length")["input_ids"],
+        "labels": tokenizer(example["expected_answer"], max_length=20, truncation=True, padding="max_length")["input_ids"]
+    }
+
+dataset = load_dataset("json", data_files={"train": "./train.cleaned.json"})
+tokenized_dataset = dataset["train"].map(preprocess_function, batched=True)
+
+# Step 4: Define Training Arguments
+training_args = TrainingArguments(
+    output_dir="./adapter_results",
+    per_device_train_batch_size=1,  # Adjust according to GPU memory
+    learning_rate=5e-4,
+    num_train_epochs=3,
+    save_strategy="epoch",
+    logging_dir="./logs",
+    logging_steps=10,
+    fp16=True,  # Enable mixed precision for speed
+    gradient_accumulation_steps=4,
+)
+
+# Step 5: Fine-Tune Model Using Trainer
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=tokenized_dataset
+)
+
+trainer.train()
+
+# Save the fine-tuned model with adapters
+model.save_pretrained("model_with_adapters")
