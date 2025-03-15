@@ -1,7 +1,12 @@
 import json
+from dotenv import load_dotenv
+import os
 
-data_path = "D:/datasets/EmpiriNLP/FinQA/dataset/train.json"
-to_path = "D:/datasets/EmpiriNLP/FinQA/dataset/train.cleaned.json"
+load_dotenv()
+DATSET_DIR = os.getenv("DATASET_DIR") + "FinQA/dataset/"
+
+data_path = DATSET_DIR + "train.json"
+to_path = DATSET_DIR + "train.cleaned.json"
 
 with open(data_path, "r") as f:
     data = json.load(f)
