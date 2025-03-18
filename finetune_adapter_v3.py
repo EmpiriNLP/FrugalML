@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import logging
 import time
 from adapters import AutoAdapterModel, AdapterTrainer
+import sys
 
 
 logging.basicConfig(level=logging.INFO)
@@ -31,15 +32,12 @@ def main():
     def preprocess_to_finetune(batch):
 
         encoded = tokenizer(batch["input_text"], max_length=80, truncation=True, padding="max_length")
-        return  {key: torch.tensor(value).to(DEVICE) for key, value in encoded.items()}
-
+        return  encoded
 
 
     train_dataset = train_dataset.map(preprocess_to_finetune, batched=True)
     train_dataset = train_dataset.rename_column(original_column_name="expected_answer", new_column_name="labels")
-    train_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"]) 
-    train_dataset = train_dataset.with_format("torch", device=DEVICE)
-
+    train_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"], device=DEVICE) 
 
     number_of_samples = 1
     eval_dataset = train_dataset.select(range(22))
@@ -47,6 +45,15 @@ def main():
 
     model.add_adapter("finance_adapter", config="seq_bn")
     model.train_adapter("finance_adapter")
+
+    # Adapter layers are added outside the model's original layers, so manually convert them to bfloat16 and move to device
+    for name, param in model.named_parameters():
+        if "finance_adapter" in name:
+            param.data = param.data.to(torch.bfloat16)
+            if param.grad is not None:
+                param.grad.data = param.grad.data.to(torch.bfloat16)
+                
+    model.to(DEVICE)
 
     training_args = TrainingArguments(
         learning_rate=1e-4,
@@ -139,7 +146,8 @@ def load_model(model_id, device, token, cache_dir):
         device_map={"": device},
         quantization_config=quant_config,
         token=token,
-        cache_dir=cache_dir
+        cache_dir=cache_dir,
+        torch_dtype=torch.bfloat16,
     )
     tokenizer = AutoTokenizer.from_pretrained(
         model_id, 
