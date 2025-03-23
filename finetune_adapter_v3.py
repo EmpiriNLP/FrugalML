@@ -30,13 +30,27 @@ def main():
 
     
     def preprocess_to_finetune(batch):
+        prompt = batch["input_text"]
+        answer = batch["expected_answer"]
+        full_text = [p+a for p, a in zip(prompt, answer)]
 
-        encoded = tokenizer(batch["input_text"], max_length=80, truncation=True, padding="max_length")
-        return  encoded
+        full_text_encodings = tokenizer(full_text, return_tensors="pt", padding=True, truncation=True)
+
+        prompt_encodings = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
+        prompt_len = prompt_encodings["input_ids"].shape[1] # One length is enough if padding + truncation
+
+        labels = full_text_encodings["input_ids"].clone()
+        labels[:, :prompt_len] = -100 # Ignore loss on prompt tokens?
+
+        full_text_encodings["labels"] = labels # Tokenized_full has input_ids, attention_mask, labels
+
+        return  full_text_encodings
+        # encoded = tokenizer(batch["input_text"], truncation=True, padding=True)
+        # return  encoded
 
 
-    train_dataset = train_dataset.map(preprocess_to_finetune, batched=True)
-    train_dataset = train_dataset.rename_column(original_column_name="expected_answer", new_column_name="labels")
+    train_dataset = train_dataset.map(preprocess_to_finetune, batched=True, batch_size=1)
+    # train_dataset = train_dataset.rename_column(original_column_name="expected_answer", new_column_name="labels")
     train_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"], device=DEVICE) 
 
     number_of_samples = 1
@@ -58,8 +72,8 @@ def main():
     training_args = TrainingArguments(
         learning_rate=1e-4,
         num_train_epochs=1,
-        per_device_train_batch_size=1,
-        per_device_eval_batch_size=1,
+        per_device_train_batch_size=2,
+        per_device_eval_batch_size=2,
         output_dir="./models/adapter",
         overwrite_output_dir=True,
         # evaluation_strategy="epoch",
@@ -69,6 +83,7 @@ def main():
         # disable_tqdm=False,
         remove_unused_columns=False,
         dataloader_pin_memory=False,
+        label_smoothing_factor=0.1, # To enable default label smoothing loss function
     )
 
     trainer = AdapterTrainer(
@@ -76,7 +91,8 @@ def main():
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=train_dataset,
-        compute_metrics=compute_metrics,
+        compute_metrics=compute_accuracy,
+        # compute_loss_func=compute_loss
     )
 
     trainer.train()
@@ -242,7 +258,8 @@ def clean_answer(text):
     return text.strip()
 
 
-def compute_metrics(p: EvalPrediction):
+def compute_accuracy(p: EvalPrediction):
+
     predicted_answer = p.predictions[0]
     expected_answer = p.labels[0]
 
@@ -251,7 +268,13 @@ def compute_metrics(p: EvalPrediction):
 
     similarity = fuzz.ratio(clean_p.lower(), clean_e.lower())
     
-    return {"acc": int(similarity >= SIMILARITY_THRESHOLD)}
+    return {"acc": [int(similarity >= SIMILARITY_THRESHOLD)]}
+
+def compute_loss(outputs, labels, num_items_in_batch):
+    print(outputs)
+    print(labels)
+    sys.exit()
+    return 0
 
 if __name__ == "__main__":
     main()
