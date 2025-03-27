@@ -58,6 +58,7 @@ def main():
     train_dataset = train_dataset.select(range(number_of_samples))
 
     model.add_adapter("finance_adapter", config="seq_bn")
+    model.add_causal_lm_head("finance_adapter")
     model.train_adapter("finance_adapter")
 
     # Adapter layers are added outside the model's original layers, so manually convert them to bfloat16 and move to device
@@ -83,7 +84,7 @@ def main():
         # disable_tqdm=False,
         remove_unused_columns=False,
         dataloader_pin_memory=False,
-        label_smoothing_factor=0.1, # To enable default label smoothing loss function
+        # label_smoothing_factor=0.1, # To enable default label smoothing loss function
     )
 
     trainer = AdapterTrainer(
@@ -95,6 +96,7 @@ def main():
         # compute_loss_func=compute_loss
     )
 
+    logging.info("Starting Training")
     trainer.train()
     trainer.evaluate()
 
@@ -157,15 +159,14 @@ def load_model(model_id, device, token, cache_dir):
         bnb_4bit_quant_type="nf4"  # NormalFloat4, best for Llama models
     )
     # Load tokenizer and model
-    model = AutoAdapterModel(
+    model = LlamaAdapterModel.from_pretrained(
         model_id,
         device_map={"": device},
         quantization_config=quant_config,
-        token=token,
         cache_dir=cache_dir,
         torch_dtype=torch.bfloat16,
     )
-    tokenizer = AutoTokenizer(
+    tokenizer = AutoTokenizer.from_pretrained(
         model_id, 
         token=token,
         cache_dir=cache_dir
@@ -259,16 +260,32 @@ def clean_answer(text):
 
 
 def compute_accuracy(p: EvalPrediction):
-
+    # (1, 881, 128256), which is (batch, sequence, vocab)
     predicted_answer = p.predictions[0]
-    expected_answer = p.labels[0]
+    # (881, ), where majority are -100, masked input tokens, only the last or last few tokens are token ids
+    expected_answer = p.label_ids[0]
 
-    clean_p = clean_answer(predicted_answer)
-    clean_e = clean_answer(expected_answer)
+    # Mask out the -100 labels from predicted_answer and expected_answer
+    mask = expected_answer != -100
+    predicted_answer = predicted_answer[mask] 
+    expected_answer = expected_answer[mask]
 
-    similarity = fuzz.ratio(clean_p.lower(), clean_e.lower())
-    
-    return {"acc": [int(similarity >= SIMILARITY_THRESHOLD)]}
+    # Calculate accuracy as 0/1 with exact match
+    correct_predictions = 0
+    for i in range(len(predicted_answer)):
+        predicted_answer_ids = torch.argmax(predicted_answer[i], dim=-1)
+        # Convert expected_answer to token ids
+        expected_answer_ids = expected_answer[i]
+
+        # Check if the predicted answer matches the expected answer
+        if torch.equal(predicted_answer_ids, expected_answer_ids):
+            correct_predictions += 1
+    accuracy = correct_predictions / len(predicted_answer)
+    return {
+        "exact_match_accuracy": accuracy,
+        "mask_length": mask.sum().item(),
+        "answer_length": len(predicted_answer),
+    }
 
 def compute_loss(outputs, labels, num_items_in_batch):
     # Calculate loss as 0/1 loss with exact match
