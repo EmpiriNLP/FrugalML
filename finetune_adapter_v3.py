@@ -98,7 +98,7 @@ def main():
 
     logging.info("Starting Training")
     trainer.train()
-    trainer.evaluate()
+    # trainer.evaluate()
 
     # Inference as before
     train_dataset = load_preprocessed_dataset("json", data_files=DATSET_DIR+"/train.cleaned.json", split="train")
