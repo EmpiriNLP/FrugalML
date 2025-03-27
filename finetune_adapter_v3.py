@@ -7,7 +7,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import time
-from adapters import AutoAdapterModel, AdapterTrainer
+from adapters import AutoAdapterModel, AdapterTrainer, LlamaAdapterModel
 import sys
 
 
@@ -157,7 +157,7 @@ def load_model(model_id, device, token, cache_dir):
         bnb_4bit_quant_type="nf4"  # NormalFloat4, best for Llama models
     )
     # Load tokenizer and model
-    model = AutoAdapterModel.from_pretrained(
+    model = AutoAdapterModel(
         model_id,
         device_map={"": device},
         quantization_config=quant_config,
@@ -165,7 +165,7 @@ def load_model(model_id, device, token, cache_dir):
         cache_dir=cache_dir,
         torch_dtype=torch.bfloat16,
     )
-    tokenizer = AutoTokenizer.from_pretrained(
+    tokenizer = AutoTokenizer(
         model_id, 
         token=token,
         cache_dir=cache_dir
@@ -271,10 +271,14 @@ def compute_accuracy(p: EvalPrediction):
     return {"acc": [int(similarity >= SIMILARITY_THRESHOLD)]}
 
 def compute_loss(outputs, labels, num_items_in_batch):
-    print(outputs)
-    print(labels)
-    sys.exit()
+    # Calculate loss as 0/1 loss with exact match
+    # outputs["last_hidden_state"].shape = torch.Size([1, 881, 4096])
+    # outputs["past_key_values"] shape is (32, 2, 1, 8, 881, 128), probably not needed for loss
+    # labels.shape = torch.Size([1, 881]), where majority are -100, masked input tokens, only the last or last few tokens are token ids
+    # And the loss should be able to propagate backwards
+
     return 0
+    
 
 if __name__ == "__main__":
     main()
