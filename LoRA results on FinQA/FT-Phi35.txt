@@ -1,0 +1,245 @@
+
+
+************************************************************************
+*** Input 1 *** 
+*** Expected answer *** 
+94
+*** Clean Expected answer *** 
+94
+*** Predicted answer *** 
+$54 million
+*** Clean Predicted answer *** 
+54
+
+
+************************************************************************
+*** Input 2 *** 
+*** Expected answer *** 
+14%
+*** Clean Expected answer *** 
+14.0%
+*** Predicted answer *** 
+8.1%
+*** Clean Predicted answer *** 
+8.0%
+
+
+************************************************************************
+*** Input 3 *** 
+*** Expected answer *** 
+9.9%
+*** Clean Expected answer *** 
+10.0%
+*** Predicted answer *** 
+The percentage change is calculated as (($153.7 million - $139.9 million) / $139.9 million) * 100 = 9.7%
+*** Clean Predicted answer *** 
+10.0%
+
+
+************************************************************************
+*** Input 4 *** 
+*** Expected answer *** 
+2.9%
+*** Clean Expected answer *** 
+3.0%
+*** Predicted answer *** 
+121.4 million
+*** Clean Predicted answer *** 
+121.0
+
+
+************************************************************************
+*** Input 5 *** 
+*** Expected answer *** 
+
+*** Clean Expected answer *** 
+
+*** Predicted answer *** 
+Approximately 33.7%
+*** Clean Predicted answer *** 
+34.0%
+
+
+************************************************************************
+*** Input 6 *** 
+*** Expected answer *** 
+7%
+*** Clean Expected answer *** 
+7.0%
+*** Predicted answer *** 
+9.09%
+*** Clean Predicted answer *** 
+9.0%
+
+
+************************************************************************
+*** Input 7 *** 
+*** Expected answer *** 
+10%
+*** Clean Expected answer *** 
+10.0%
+*** Predicted answer *** 
+101.458%
+*** Clean Predicted answer *** 
+101.0%
+
+
+************************************************************************
+*** Input 8 *** 
+*** Expected answer *** 
+12%
+*** Clean Expected answer *** 
+12.0%
+*** Predicted answer *** 
+Approximately 11.6%
+*** Clean Predicted answer *** 
+12.0%
+
+
+************************************************************************
+*** Input 9 *** 
+*** Expected answer *** 
+yes
+*** Clean Expected answer *** 
+yes
+*** Predicted answer *** 
+yes
+*** Clean Predicted answer *** 
+yes
+
+
+************************************************************************
+*** Input 10 *** 
+*** Expected answer *** 
+-35
+*** Clean Expected answer *** 
+-35
+*** Predicted answer *** 
+$592 million decrease
+*** Clean Predicted answer *** 
+592
+
+
+************************************************************************
+*** Input 11 *** 
+*** Expected answer *** 
+-4.4%
+*** Clean Expected answer *** 
+-4.0%
+*** Predicted answer *** 
+The growth rate is $1.04 billion - $492.6 million = $517.4 million. To find the growth rate, subtract the 2006 value from the 2007 value: $1.04 billion - $492.6 million = $517.4 million. The growth rate in the balance of standby letters of credit from 2006 to 2007 is $517.4 million.
+*** Clean Predicted answer *** 
+517.0
+
+
+************************************************************************
+*** Input 12 *** 
+*** Expected answer *** 
+22.4%
+*** Clean Expected answer *** 
+22.0%
+*** Predicted answer *** 
+The debt-to-asset ratio is calculated by dividing total debt by total assets. From the table, total debt at December 31, 2016 is $817,388,000 and total assets at December 31, 2016 is $3,644,331,000. Therefore, the debt-to-asset ratio is $817,388,000 / $3,644,331,000 = 0.2245
+*** Clean Predicted answer *** 
+0.0
+
+
+************************************************************************
+*** Input 13 *** 
+*** Expected answer *** 
+24.6%
+*** Clean Expected answer *** 
+25.0%
+*** Predicted answer *** 
+$ 137.4 million
+*** Clean Predicted answer *** 
+137.0
+
+
+************************************************************************
+*** Input 14 *** 
+*** Expected answer *** 
+no
+*** Clean Expected answer *** 
+no
+*** Predicted answer *** 
+yes
+*** Clean Predicted answer *** 
+yes
+
+
+************************************************************************
+*** Input 15 *** 
+*** Expected answer *** 
+1.7%
+*** Clean Expected answer *** 
+2.0%
+*** Predicted answer *** 
+The percentage change in deferred tax assets from 2013 to 2014 is ((195237 - 177947) / 177947) * 100 = 9.67%
+*** Clean Predicted answer *** 
+10.0%
+
+
+************************************************************************
+*** Input 16 *** 
+*** Expected answer *** 
+3298
+*** Clean Expected answer *** 
+3298
+*** Predicted answer *** 
+(4648 + 3625 + 1620) / 3 = 3367.666666666667
+*** Clean Predicted answer *** 
+3368.0
+
+
+************************************************************************
+*** Input 17 *** 
+*** Expected answer *** 
+65
+*** Clean Expected answer *** 
+65
+*** Predicted answer *** 
+Approximately 65 destinations per continent
+*** Clean Predicted answer *** 
+65
+
+
+************************************************************************
+*** Input 18 *** 
+*** Expected answer *** 
+704.25
+*** Clean Expected answer *** 
+704.0
+*** Predicted answer *** 
+($705.4 million + $703.1 million) / 2 = $704.25 million
+*** Clean Predicted answer *** 
+704.0
+
+
+************************************************************************
+*** Input 19 *** 
+*** Expected answer *** 
+11.0%
+*** Clean Expected answer *** 
+11.0%
+*** Predicted answer *** 
+Approximately 1.1%
+*** Clean Predicted answer *** 
+1.0%
+
+
+************************************************************************
+*** Input 20 *** 
+*** Expected answer *** 
+68.9
+*** Clean Expected answer *** 
+69.0
+*** Predicted answer *** 
+$19.7 billion
+*** Clean Predicted answer *** 
+20.0
+*************************************FinQA***********************************
+Total Samples: 20
+Correct Predictions: 7
+Accuracy: 35.00%
+Average Similarity Score: 61.80%
