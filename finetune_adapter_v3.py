@@ -9,6 +9,7 @@ import logging
 import time
 from adapters import AutoAdapterModel, AdapterTrainer, LlamaAdapterModel
 import sys
+import pandas as pd
 
 
 logging.basicConfig(level=logging.INFO)
@@ -19,134 +20,124 @@ MODEL_DIR = os.getcwd() + "/models"
 MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
 DEVICE = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
 print(DEVICE)
-DATSET_DIR = os.getenv("DATASET_DIR") + "FinQA/dataset/"
+DATASET_DIR = os.getenv("DATASET_DIR") + "FinQA/dataset/"
+RESULTS_DIR = os.getenv("RESULTS_DIR") + "FinQA/"
 SIMILARITY_THRESHOLD = 85  
+RESULTS_HEADER = ["model", "experiment", "trained_samples", "epochs", "batch_size", "evaluated_samples", "accuracy", "avg_similarity", "total_time", "avg_time_per_sample"]
+# Other possible headers: "similarity_threshold", "max_new_tokens", etc.
 
+EXPERIMENT = "adapter" # "adapter" or "baseline"
 
 
 def main():
     model, tokenizer = load_model(MODEL_ID, DEVICE, ACCESS_TOKEN, MODEL_DIR)
-    train_dataset = load_preprocessed_dataset("json", data_files=DATSET_DIR+"/train.cleaned.json", split="train")
+    train_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/train.cleaned.json", split="train")
 
-    
-    def preprocess_to_finetune(batch):
-        prompt = batch["input_text"]
-        answer = batch["expected_answer"]
-        full_text = [p+a for p, a in zip(prompt, answer)]
+    epochs = 1
+    batch_size = 1
+    number_of_training_samples = 22
 
-        full_text_encodings = tokenizer(full_text, return_tensors="pt", padding=True, truncation=True)
+    if EXPERIMENT == "adapter":
+        
+        def preprocess_to_finetune(batch):
+            prompt = batch["input_text"]
+            answer = batch["expected_answer"]
+            full_text = [p+a for p, a in zip(prompt, answer)]
 
-        prompt_encodings = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
-        prompt_len = prompt_encodings["input_ids"].shape[1] # One length is enough if padding + truncation
+            full_text_encodings = tokenizer(full_text, return_tensors="pt", padding=True, truncation=True)
 
-        labels = full_text_encodings["input_ids"].clone()
-        labels[:, :prompt_len] = -100 # Ignore loss on prompt tokens?
+            prompt_encodings = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
+            prompt_len = prompt_encodings["input_ids"].shape[1] # One length is enough if padding + truncation
 
-        full_text_encodings["labels"] = labels # Tokenized_full has input_ids, attention_mask, labels
+            labels = full_text_encodings["input_ids"].clone()
+            labels[:, :prompt_len] = -100 # Ignore loss on prompt tokens?
 
-        return  full_text_encodings
-        # encoded = tokenizer(batch["input_text"], truncation=True, padding=True)
-        # return  encoded
+            full_text_encodings["labels"] = labels # Tokenized_full has input_ids, attention_mask, labels
 
-
-    train_dataset = train_dataset.map(preprocess_to_finetune, batched=True, batch_size=1)
-    # train_dataset = train_dataset.rename_column(original_column_name="expected_answer", new_column_name="labels")
-    train_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"], device=DEVICE) 
-
-    number_of_samples = 1
-    eval_dataset = train_dataset.select(range(22))
-    train_dataset = train_dataset.select(range(number_of_samples))
-
-    model.add_adapter("finance_adapter", config="seq_bn")
-    model.add_causal_lm_head("finance_adapter")
-    model.train_adapter("finance_adapter")
-
-    # Adapter layers are added outside the model's original layers, so manually convert them to bfloat16 and move to device
-    for name, param in model.named_parameters():
-        if "finance_adapter" in name:
-            param.data = param.data.to(torch.bfloat16)
-            if param.grad is not None:
-                param.grad.data = param.grad.data.to(torch.bfloat16)
-                
-    model.to(DEVICE)
-
-    training_args = TrainingArguments(
-        learning_rate=1e-4,
-        num_train_epochs=1,
-        per_device_train_batch_size=2,
-        per_device_eval_batch_size=2,
-        output_dir="./models/adapter",
-        overwrite_output_dir=True,
-        # evaluation_strategy="epoch",
-        logging_dir="./logs",
-        logging_steps=10,
-        # save_steps=10,
-        # disable_tqdm=False,
-        remove_unused_columns=False,
-        dataloader_pin_memory=False,
-        # label_smoothing_factor=0.1, # To enable default label smoothing loss function
-    )
-
-    trainer = AdapterTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=train_dataset,
-        compute_metrics=compute_accuracy,
-        # compute_loss_func=compute_loss
-    )
-
-    logging.info("Starting Training")
-    trainer.train()
-    # trainer.evaluate()
-
-    # Inference as before
-    train_dataset = load_preprocessed_dataset("json", data_files=DATSET_DIR+"/train.cleaned.json", split="train")
+            return  full_text_encodings
+            # encoded = tokenizer(batch["input_text"], truncation=True, padding=True)
+            # return  encoded
 
 
+        train_dataset = train_dataset.map(preprocess_to_finetune, batched=True, batch_size=batch_size)
+        # train_dataset = train_dataset.rename_column(original_column_name="expected_answer", new_column_name="labels")
+        train_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"], device=DEVICE) 
+
+        # eval_dataset = train_dataset.select(range(22))
+        train_dataset = train_dataset.select(range(number_of_training_samples))
+
+        model.add_adapter("finance_adapter", config="seq_bn")
+        model.add_causal_lm_head("finance_adapter")
+        model.train_adapter("finance_adapter")
+
+        # Adapter layers are added outside the model's original layers, so manually convert them to bfloat16 and move to device
+        for name, param in model.named_parameters():
+            if "finance_adapter" in name:
+                param.data = param.data.to(torch.bfloat16)
+                if param.grad is not None:
+                    param.grad.data = param.grad.data.to(torch.bfloat16)
+                    
+        model.to(DEVICE)
+
+        training_args = TrainingArguments(
+            learning_rate=1e-4,
+            num_train_epochs=epochs,
+            per_device_train_batch_size=2,
+            # per_device_eval_batch_size=2,
+            output_dir="./models/adapter",
+            overwrite_output_dir=True,
+            # evaluation_strategy="epoch",
+            logging_dir="./logs",
+            logging_steps=10,
+            # save_steps=10,
+            # disable_tqdm=False,
+            remove_unused_columns=False,
+            dataloader_pin_memory=False,
+            # label_smoothing_factor=0.1, # To enable default label smoothing loss function
+        )
+
+        trainer = AdapterTrainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset,
+            # eval_dataset=train_dataset,
+            compute_metrics=compute_accuracy,
+            # compute_loss_func=compute_loss
+        )
+
+        logging.info("Starting Training")
+        trainer.train()
+        # trainer.evaluate()
+
+    # Evaluate the model
+    results_path = os.path.join(RESULTS_DIR, "results.tsv")
+    if not os.path.exists(results_path):
+        os.makedirs(RESULTS_DIR, exist_ok=True)
+        results_df = pd.DataFrame(columns=RESULTS_HEADER)
+        results_df.to_csv(results_path, index=False, sep="\t")
+
+    eval_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/train.cleaned.json", split="train")
     number_of_samples = 22
-    train_dataset = train_dataset.select(range(number_of_samples))
+    eval_dataset = eval_dataset.select(range(number_of_samples))
 
-    correct_predictions = 0
-    threshold = 85  
-    similarity_scores = []
+    results = evaluate_model(model, tokenizer, eval_dataset)
+    results["model"] = MODEL_ID
+    results["experiment"] = EXPERIMENT
+    if results["experiment"] == "baseline":
+        results["trained_samples"] = "N/A"
+        results["epochs"] = "N/A"
+        results["batch_size"] = "N/A"
+    else:
+        results["experiment"] = "adapter"
+        results["trained_samples"] = number_of_training_samples = 22
+        results["epochs"] = epochs
+        results["batch_size"] = batch_size
+    results["evaluated_samples"] = number_of_samples
 
-    logging.info("Starting Inference")
-    start = time.time()
-    for i, example in enumerate(train_dataset):
-
-        predicted_answer = generate_answer(example["input_text"], tokenizer, model)
-        expected_answer = example["expected_answer"]
-
-        clean_p = clean_answer(predicted_answer)
-        clean_e = clean_answer(expected_answer)
-
-        similarity = fuzz.ratio(clean_p.lower(), clean_e.lower())
-        similarity_scores.append(similarity)
-
-        if similarity >= threshold:
-            correct_predictions += 1
-
-        # Log every 10% of the dataset
-        if number_of_samples >=100 and (i + 1) % (number_of_samples // 10) == 0:
-            logging.info(f"Processed {i + 1} / {(i+1)/number_of_samples*100:.2f}%")
-
-    end = time.time()
-
-    accuracy = correct_predictions / number_of_samples * 100
-    avg_similarity = sum(similarity_scores) / number_of_samples
-    elapsed_time = end - start
-    avg_elapsed_time = elapsed_time / number_of_samples
-
-    logging.info(f"Total Samples: {number_of_samples}")
-    logging.info(f"Correct Predictions: {correct_predictions}")
-    logging.info(f"Accuracy: {accuracy:.2f}%")
-    logging.info(f"Average Similarity Score: {avg_similarity:.2f}%")
-
-
-    logging.info(f"Total Inf time: {elapsed_time:.4f} seconds")
-    logging.info(f"Avg Inf time: {avg_elapsed_time:.4f} seconds")
-
+    results_df = pd.read_csv(results_path, sep="\t")
+    results_df.loc[len(results_df)] = results
+    results_df.to_csv(results_path, index=False, sep="\t")
+    logging.info(f"Results saved to {results_path}")
 
 
 def load_model(model_id, device, token, cache_dir):
@@ -159,13 +150,25 @@ def load_model(model_id, device, token, cache_dir):
         bnb_4bit_quant_type="nf4"  # NormalFloat4, best for Llama models
     )
     # Load tokenizer and model
-    model = LlamaAdapterModel.from_pretrained(
-        model_id,
-        device_map={"": device},
-        quantization_config=quant_config,
-        cache_dir=cache_dir,
-        torch_dtype=torch.bfloat16,
-    )
+    if EXPERIMENT == "adapter":
+        model = LlamaAdapterModel.from_pretrained(
+            model_id,
+            device_map={"": device},
+            quantization_config=quant_config,
+            cache_dir=cache_dir,
+            torch_dtype=torch.bfloat16,
+        )
+    elif EXPERIMENT == "baseline":
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            device_map={"": device},
+            quantization_config=quant_config,
+            cache_dir=cache_dir,
+            torch_dtype=torch.bfloat16,
+        )
+    else:
+        raise ValueError(f"Unknown experiment type thus can't decide model: {EXPERIMENT}")
+    
     tokenizer = AutoTokenizer.from_pretrained(
         model_id, 
         token=token,
@@ -200,7 +203,6 @@ def preprocess_function(example):
         "input_text": input_text,
         "expected_answer": expected_answer
     }
-
 
 def load_preprocessed_dataset(path: str, data_files: str, split: str):
     logging.info("Loading dataset")
@@ -296,6 +298,55 @@ def compute_loss(outputs, labels, num_items_in_batch):
 
     return 0
     
+def evaluate_model(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, eval_dataset: torch.utils.data.Dataset):
+    number_of_samples = len(eval_dataset)
+    correct_predictions = 0
+    threshold = SIMILARITY_THRESHOLD  
+    similarity_scores = []
+
+    logging.info("Starting Inference")
+    start = time.time()
+    for i, example in enumerate(eval_dataset):
+
+        predicted_answer = generate_answer(example["input_text"], tokenizer, model)
+        expected_answer = example["expected_answer"]
+
+        clean_p = clean_answer(predicted_answer)
+        clean_e = clean_answer(expected_answer)
+
+        similarity = fuzz.ratio(clean_p.lower(), clean_e.lower())
+        similarity_scores.append(similarity)
+
+        if similarity >= threshold:
+            correct_predictions += 1
+
+        # Log every 10% of the dataset
+        if number_of_samples >=100 and (i + 1) % (number_of_samples // 10) == 0:
+            logging.info(f"Processed {i + 1} / {(i+1)/number_of_samples*100:.2f}%")
+
+    end = time.time()
+
+    accuracy = correct_predictions / number_of_samples * 100
+    avg_similarity = sum(similarity_scores) / number_of_samples
+    elapsed_time = end - start
+    avg_elapsed_time = elapsed_time / number_of_samples
+
+    logging.info(f"Total Samples: {number_of_samples}")
+    logging.info(f"Correct Predictions: {correct_predictions}")
+    logging.info(f"Accuracy: {accuracy:.2f}%")
+    logging.info(f"Average Similarity Score: {avg_similarity:.2f}%")
+
+
+    logging.info(f"Total Inf time: {elapsed_time:.4f} seconds")
+    logging.info(f"Avg Inf time: {avg_elapsed_time:.4f} seconds")
+
+    return {
+        "number_of_samples": number_of_samples,
+        "accuracy": round(accuracy, 2),
+        "avg_similarity": round(avg_similarity, 2),
+        "total_time": round(elapsed_time, 4),
+        "avg_time_per_sample": round(avg_elapsed_time, 4),
+    }
 
 if __name__ == "__main__":
     main()
