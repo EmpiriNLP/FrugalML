@@ -370,18 +370,42 @@ def evaluate_model(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, eval_d
     }
 
 if __name__ == "__main__":
-    # epochs = [1, 5, 15]
-    # batch_size = [1, 2, 4]
-    # number_of_training_samples = [50, 200, 500]
+    logging.info("===================================")
+    logging.info("===================================")
+    e, b, n = 15, 1, 200
+    logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}")
+    main(epochs=e, batch_size=b, number_of_training_samples=n)
+    logging.info("Experiment finished")
+    logging.info("===================================")
+    logging.info("===================================")
+    logging.info("===================================")
 
-    # for e, b, n in itertools.product(epochs, batch_size, number_of_training_samples):
-    #     logging.info("===================================")
-    #     logging.info("===================================")
-    #     logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}")
-    #     main(epochs=e, batch_size=b, number_of_training_samples=n)
-    #     logging.info("Experiment finished")
-    #     logging.info("===================================")
-    #     logging.info("===================================")
-    #     logging.info("===================================")
+    epochs = [1, 5, 15]
+    batch_size = [2, 4]
+    number_of_training_samples = [200]
 
-    main()
+    for e, b, n in itertools.product(epochs, batch_size, number_of_training_samples):
+        logging.info("===================================")
+        logging.info("===================================")
+        logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}")
+        main(epochs=e, batch_size=b, number_of_training_samples=n)
+        logging.info("Experiment finished")
+        logging.info("===================================")
+        logging.info("===================================")
+        logging.info("===================================")
+
+    epochs = [1, 5, 15]
+    batch_size = [1, 2, 4]
+    number_of_training_samples = [1000]
+
+    for e, b, n in itertools.product(epochs, batch_size, number_of_training_samples):
+        logging.info("===================================")
+        logging.info("===================================")
+        logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}")
+        main(epochs=e, batch_size=b, number_of_training_samples=n)
+        logging.info("Experiment finished")
+        logging.info("===================================")
+        logging.info("===================================")
+        logging.info("===================================")
+
+    # main()
