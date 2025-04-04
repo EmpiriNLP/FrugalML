@@ -10,7 +10,8 @@ import time
 from adapters import AutoAdapterModel, AdapterTrainer, LlamaAdapterModel
 import sys
 import pandas as pd
-
+import itertools
+import gc
 
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
@@ -23,19 +24,23 @@ print(DEVICE)
 DATASET_DIR = os.getenv("DATASET_DIR") + "FinQA/dataset/"
 RESULTS_DIR = os.getenv("RESULTS_DIR") + "FinQA/"
 SIMILARITY_THRESHOLD = 85  
-RESULTS_HEADER = ["model", "experiment", "trained_samples", "epochs", "batch_size", "evaluated_samples", "accuracy", "avg_similarity", "total_time", "avg_time_per_sample"]
+RESULTS_HEADER = ["model", "experiment", "trained_samples", "epochs", "batch_size", "evaluated_samples", "accuracy", "avg_similarity", "total_time", "avg_time_per_sample", "training_time"]
 # Other possible headers: "similarity_threshold", "max_new_tokens", etc.
 
 EXPERIMENT = "adapter" # "adapter" or "baseline"
 
 
-def main():
+def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1):
     model, tokenizer = load_model(MODEL_ID, DEVICE, ACCESS_TOKEN, MODEL_DIR)
     train_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/train.cleaned.json", split="train")
 
-    epochs = 1
-    batch_size = 1
-    number_of_training_samples = 22
+    # epochs = [1, 5, 15]
+    # batch_size = [1, 2, 4]
+    # number_of_training_samples = [1, 200, 1000]
+
+    # epochs = 15
+    # batch_size = 1
+    # number_of_training_samples = 200
 
     if EXPERIMENT == "adapter":
         
@@ -44,9 +49,9 @@ def main():
             answer = batch["expected_answer"]
             full_text = [p+a for p, a in zip(prompt, answer)]
 
-            full_text_encodings = tokenizer(full_text, return_tensors="pt", padding=True, truncation=True)
+            full_text_encodings = tokenizer(full_text, return_tensors="pt", padding=True, truncation=True, max_length=4096)
 
-            prompt_encodings = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
+            prompt_encodings = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True, max_length=4096)
             prompt_len = prompt_encodings["input_ids"].shape[1] # One length is enough if padding + truncation
 
             labels = full_text_encodings["input_ids"].clone()
@@ -62,6 +67,7 @@ def main():
         train_dataset = train_dataset.map(preprocess_to_finetune, batched=True, batch_size=batch_size)
         # train_dataset = train_dataset.rename_column(original_column_name="expected_answer", new_column_name="labels")
         train_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"], device=DEVICE) 
+
 
         # eval_dataset = train_dataset.select(range(22))
         train_dataset = train_dataset.select(range(number_of_training_samples))
@@ -82,7 +88,7 @@ def main():
         training_args = TrainingArguments(
             learning_rate=1e-4,
             num_train_epochs=epochs,
-            per_device_train_batch_size=2,
+            per_device_train_batch_size=batch_size,
             # per_device_eval_batch_size=2,
             output_dir="./models/adapter",
             overwrite_output_dir=True,
@@ -106,8 +112,11 @@ def main():
         )
 
         logging.info("Starting Training")
+        start = time.time()
         trainer.train()
         # trainer.evaluate()
+        end = time.time()
+        training_time = end - start
 
     # Evaluate the model
     results_path = os.path.join(RESULTS_DIR, "results.tsv")
@@ -117,27 +126,37 @@ def main():
         results_df.to_csv(results_path, index=False, sep="\t")
 
     eval_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/train.cleaned.json", split="train")
-    number_of_samples = 22
-    eval_dataset = eval_dataset.select(range(number_of_samples))
+    number_of_eval_samples = 22
+    eval_dataset = eval_dataset.select(range(number_of_eval_samples))
 
     results = evaluate_model(model, tokenizer, eval_dataset)
     results["model"] = MODEL_ID
     results["experiment"] = EXPERIMENT
     if results["experiment"] == "baseline":
-        results["trained_samples"] = "N/A"
-        results["epochs"] = "N/A"
-        results["batch_size"] = "N/A"
+        results["trained_samples"] = 0
+        results["training_time"] = 0
+        results["epochs"] = 0
+        results["batch_size"] = 0
     else:
         results["experiment"] = "adapter"
-        results["trained_samples"] = number_of_training_samples = 22
+        results["trained_samples"] = number_of_training_samples
+        results["training_time"] = training_time
         results["epochs"] = epochs
         results["batch_size"] = batch_size
-    results["evaluated_samples"] = number_of_samples
+    results["evaluated_samples"] = number_of_eval_samples
 
     results_df = pd.read_csv(results_path, sep="\t")
     results_df.loc[len(results_df)] = results
     results_df.to_csv(results_path, index=False, sep="\t")
     logging.info(f"Results saved to {results_path}")
+
+    # model = None
+    # tokenizer = None
+    # gc.collect()
+    # del model
+    # del tokenizer
+    # torch.cuda.empty_cache()
+    # logging.info("Model and tokenizer deleted")
 
 
 def load_model(model_id, device, token, cache_dir):
@@ -158,6 +177,7 @@ def load_model(model_id, device, token, cache_dir):
             cache_dir=cache_dir,
             torch_dtype=torch.bfloat16,
         )
+        model.gradient_checkpointing_enable()  # Enable gradient checkpointing
     elif EXPERIMENT == "baseline":
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
@@ -214,6 +234,7 @@ def load_preprocessed_dataset(path: str, data_files: str, split: str):
 
     logging.info("Preprocessing dataset")
     dataset = dataset.map(preprocess_function, remove_columns=dataset.column_names)
+    dataset = dataset.with_format("torch")  # Use lazy loading
     return dataset
 
 def generate_answer(input_text, tokenizer: AutoTokenizer, model: AutoModelForCausalLM):
@@ -349,4 +370,18 @@ def evaluate_model(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, eval_d
     }
 
 if __name__ == "__main__":
+    # epochs = [1, 5, 15]
+    # batch_size = [1, 2, 4]
+    # number_of_training_samples = [50, 200, 500]
+
+    # for e, b, n in itertools.product(epochs, batch_size, number_of_training_samples):
+    #     logging.info("===================================")
+    #     logging.info("===================================")
+    #     logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}")
+    #     main(epochs=e, batch_size=b, number_of_training_samples=n)
+    #     logging.info("Experiment finished")
+    #     logging.info("===================================")
+    #     logging.info("===================================")
+    #     logging.info("===================================")
+
     main()
