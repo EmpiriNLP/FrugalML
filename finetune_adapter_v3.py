@@ -88,7 +88,7 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
         training_args = TrainingArguments(
             learning_rate=1e-4,
             num_train_epochs=epochs,
-            per_device_train_batch_size=batch_size,
+            per_device_train_batch_size=1,
             # per_device_eval_batch_size=2,
             output_dir="./models/adapter",
             overwrite_output_dir=True,
@@ -100,6 +100,8 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
             remove_unused_columns=False,
             dataloader_pin_memory=False,
             # label_smoothing_factor=0.1, # To enable default label smoothing loss function
+            save_strategy="best",
+            save_total_limit=1,
         )
 
         trainer = AdapterTrainer(
@@ -116,7 +118,7 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
         trainer.train()
         # trainer.evaluate()
         end = time.time()
-        training_time = end - start
+        training_time = round(end - start, 4)
 
     # Evaluate the model
     results_path = os.path.join(RESULTS_DIR, "results.tsv")
@@ -370,9 +372,9 @@ def evaluate_model(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, eval_d
     }
 
 if __name__ == "__main__":
+    e, b, n = 5, 4, 1000
     logging.info("===================================")
     logging.info("===================================")
-    e, b, n = 15, 1, 200
     logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}")
     main(epochs=e, batch_size=b, number_of_training_samples=n)
     logging.info("Experiment finished")
@@ -380,21 +382,8 @@ if __name__ == "__main__":
     logging.info("===================================")
     logging.info("===================================")
 
-    epochs = [1, 5, 15]
-    batch_size = [2, 4]
-    number_of_training_samples = [200]
 
-    for e, b, n in itertools.product(epochs, batch_size, number_of_training_samples):
-        logging.info("===================================")
-        logging.info("===================================")
-        logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}")
-        main(epochs=e, batch_size=b, number_of_training_samples=n)
-        logging.info("Experiment finished")
-        logging.info("===================================")
-        logging.info("===================================")
-        logging.info("===================================")
-
-    epochs = [1, 5, 15]
+    epochs = [15]
     batch_size = [1, 2, 4]
     number_of_training_samples = [1000]
 
