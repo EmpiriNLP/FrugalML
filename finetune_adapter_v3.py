@@ -12,6 +12,7 @@ import sys
 import pandas as pd
 import itertools
 import gc
+import json
 
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
@@ -100,7 +101,7 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
             remove_unused_columns=False,
             dataloader_pin_memory=False,
             # label_smoothing_factor=0.1, # To enable default label smoothing loss function
-            save_strategy="no",
+            save_strategy="epoch",
             save_total_limit=3,
             # metric_for_best_model="exact_match_accuracy",
             # greater_is_better=True,
@@ -133,7 +134,8 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
     number_of_eval_samples = 22
     eval_dataset = eval_dataset.select(range(number_of_eval_samples))
 
-    results = evaluate_model(model, tokenizer, eval_dataset)
+    answer_output_path = os.path.join(RESULTS_DIR, f"answers.epoch_{epochs}-ts_{number_of_training_samples}-bs_{batch_size}.json")
+    results = evaluate_model(model, tokenizer, eval_dataset, answers_output_path=answer_output_path)
     results["model"] = MODEL_ID
     results["experiment"] = EXPERIMENT
     if results["experiment"] == "baseline":
@@ -323,11 +325,14 @@ def compute_loss(outputs, labels, num_items_in_batch):
 
     return 0
     
-def evaluate_model(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, eval_dataset: torch.utils.data.Dataset):
+def evaluate_model(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, eval_dataset: torch.utils.data.Dataset, answers_output_path: str=None):
     number_of_samples = len(eval_dataset)
     correct_predictions = 0
     threshold = SIMILARITY_THRESHOLD  
     similarity_scores = []
+
+    if answers_output_path:
+        answer_output = []
 
     logging.info("Starting Inference")
     start = time.time()
@@ -335,6 +340,13 @@ def evaluate_model(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, eval_d
 
         predicted_answer = generate_answer(example["input_text"], tokenizer, model)
         expected_answer = example["expected_answer"]
+        
+        if answers_output_path:
+            answer_output.append({
+                "Question": example["input_text"],
+                "Predicted Answer": predicted_answer,
+                "Expected Answer": expected_answer
+            })
 
         clean_p = clean_answer(predicted_answer)
         clean_e = clean_answer(expected_answer)
@@ -350,6 +362,11 @@ def evaluate_model(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, eval_d
             logging.info(f"Processed {i + 1} / {(i+1)/number_of_samples*100:.2f}%")
 
     end = time.time()
+
+    if answers_output_path:
+        with open(answers_output_path, "w") as f:
+            json.dump(answer_output, f, indent=4)
+        logging.info(f"Answers saved to {answers_output_path}")
 
     accuracy = correct_predictions / number_of_samples * 100
     avg_similarity = sum(similarity_scores) / number_of_samples
@@ -374,11 +391,23 @@ def evaluate_model(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, eval_d
     }
 
 if __name__ == "__main__":
-    epochs = [15]
-    batch_size = [2, 4]
-    number_of_training_samples = [1000]
 
-    for e, b, n in itertools.product(epochs, batch_size, number_of_training_samples):
+    # Cartesian combinations
+    # epochs = [5, 15]
+    # batch_size = [1]
+    # number_of_training_samples = [1000]
+    # combinations = list(itertools.product(epochs, batch_size, number_of_training_samples))
+
+    # Manual combinations
+    combinations = [
+        (15, 2, 200), # best so far
+        (5, 2, 200), # less epochs
+        (15, 2, 1000), # more samples
+        (5, 4, 200), # more batch size
+        (5, 1, 200), # less batch size
+    ]
+
+    for e, b, n in combinations:
         logging.info("===================================")
         logging.info("===================================")
         logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}")
