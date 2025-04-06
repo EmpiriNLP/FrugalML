@@ -22,5 +22,9 @@ meta-llama/Llama-3.1-8B-Instruct	adapter	1000	1	1	22	18.18	60.55	95.1064	4.323	7
 meta-llama/Llama-3.1-8B-Instruct	adapter	1000	1	2	22	9.09	58.55	95.1258	4.3239	931.8902
 meta-llama/Llama-3.1-8B-Instruct	adapter	1000	1	4	22	0.0	12.23	95.2487	4.3295	1056.5642
 meta-llama/Llama-3.1-8B-Instruct	adapter	1000	5	1	22	0.0	12.23	94.9918	4.3178	3940.4032
-meta-llama/Llama-3.1-8B-Instruct	adapter	1000	5	2	22	18.18	61.82	95.0703	4.3214	4629.7210
+meta-llama/Llama-3.1-8B-Instruct	adapter	1000	5	2	22	18.18	61.82	95.0703	4.3214	4629.721
 meta-llama/Llama-3.1-8B-Instruct	adapter	1000	5	4	22	9.09	9.09	4.7909	0.2178	5270.9413
+meta-llama/Llama-3.1-8B-Instruct	adapter	1000	5	4	22	13.64	60.82	97.2963	4.4226	5011.325
+meta-llama/Llama-3.1-8B-Instruct	adapter	1000	15	1	22	18.18	60.55	95.1283	4.324	11027.3941
+meta-llama/Llama-3.1-8B-Instruct	adapter	1000	15	2	22	9.09	9.09	4.8478	0.2204	13125.7046
+meta-llama/Llama-3.1-8B-Instruct	adapter	1000	15	4	22	0.0	6.64	95.2776	4.3308	15036.1789

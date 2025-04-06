@@ -92,7 +92,7 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
             # per_device_eval_batch_size=2,
             output_dir="./models/adapter",
             overwrite_output_dir=True,
-            # evaluation_strategy="epoch",
+            # eval_strategy="epoch",
             logging_dir="./logs",
             logging_steps=10,
             # save_steps=10,
@@ -100,8 +100,10 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
             remove_unused_columns=False,
             dataloader_pin_memory=False,
             # label_smoothing_factor=0.1, # To enable default label smoothing loss function
-            save_strategy="best",
-            save_total_limit=1,
+            save_strategy="no",
+            save_total_limit=3,
+            # metric_for_best_model="exact_match_accuracy",
+            # greater_is_better=True,
         )
 
         trainer = AdapterTrainer(
@@ -372,19 +374,8 @@ def evaluate_model(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, eval_d
     }
 
 if __name__ == "__main__":
-    e, b, n = 5, 4, 1000
-    logging.info("===================================")
-    logging.info("===================================")
-    logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}")
-    main(epochs=e, batch_size=b, number_of_training_samples=n)
-    logging.info("Experiment finished")
-    logging.info("===================================")
-    logging.info("===================================")
-    logging.info("===================================")
-
-
     epochs = [15]
-    batch_size = [1, 2, 4]
+    batch_size = [2, 4]
     number_of_training_samples = [1000]
 
     for e, b, n in itertools.product(epochs, batch_size, number_of_training_samples):
