@@ -27,13 +27,13 @@ print(DEVICE)
 DATASET_DIR = os.getenv("DATASET_DIR") + "FinQA/dataset/"
 RESULTS_DIR = os.getenv("RESULTS_DIR") + "FinQA/"
 SIMILARITY_THRESHOLD = 85  
-RESULTS_HEADER = ["model", "experiment", "trained_samples", "epochs", "batch_size", "evaluated_samples", "accuracy", "avg_similarity", "total_time", "avg_time_per_sample", "training_time"]
+RESULTS_HEADER = ["model", "experiment", "trained_samples", "batch_size", "learning_rate", "epochs", "evaluated_samples", "accuracy", "avg_similarity", "total_time", "avg_time_per_sample", "training_time"]
 # Other possible headers: "similarity_threshold", "max_new_tokens", etc.
 
 EXPERIMENT = "adapter" # "adapter" or "baseline"
 
 
-def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1):
+def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1, learning_rate: float = 1e-4):
     torch.cuda.empty_cache()
     model, tokenizer = load_model(MODEL_ID, DEVICE, ACCESS_TOKEN, MODEL_DIR)
     train_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/train.cleaned.json", split="train")
@@ -74,8 +74,10 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
         val_dataset = val_dataset.map(preprocess_to_finetune, batched=True, batch_size=batch_size)
         val_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"], device=DEVICE)
 
-        train_dataset = train_dataset.select(range(number_of_training_samples))
-        val_dataset = val_dataset.select(range(100)) # For evaluation
+        if number_of_training_samples != -1:
+            train_dataset = train_dataset.select(range(number_of_training_samples))
+
+        val_dataset = val_dataset.select(range(200)) # For significant loss
 
         model.add_adapter("finance_adapter", config="seq_bn")
         model.add_causal_lm_head("finance_adapter")
@@ -90,8 +92,13 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
                     
         model.to(DEVICE)
 
+        # Clean output dir before training
+        if os.path.exists("./models/adapter"):
+            os.system("rm -rf ./models/adapter")
+            logging.info("Cleaned output directory")
+
         training_args = TrainingArguments(
-            learning_rate=1e-4,
+            learning_rate=learning_rate,
             warmup_steps=100,
             num_train_epochs=epochs,
             per_device_train_batch_size=1,
@@ -107,7 +114,7 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
             dataloader_pin_memory=False,
             # label_smoothing_factor=0.1, # To enable default label smoothing loss function
             save_strategy="epoch",
-            save_total_limit=2,
+            save_total_limit=1,
             metric_for_best_model="eval_loss",
             # metric_for_best_model="token_accuracy",
             # greater_is_better=False,
@@ -118,7 +125,7 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
             model=model,
             args=training_args,
             train_dataset=train_dataset,
-            eval_dataset=train_dataset,
+            eval_dataset=val_dataset,
             # compute_metrics=compute_accuracy,
             # compute_loss_func=compute_loss
         )
@@ -131,6 +138,23 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
 
         # trainer.evaluate()
 
+        # Move a copy of "trainer_state.json" from "./models/adapter/checkpoint-*/" to results directory
+        checkpoint_folders = os.listdir("./models/adapter")
+        if len(checkpoint_folders) > 1:
+            logging.warning("Multiple checkpoint folders found, using the latest one")
+        checkpoint_folders = sorted(checkpoint_folders, key=lambda x: int(x.split("-")[-1]), reverse=True)
+        checkpoint_folder = os.path.join("./models/adapter", checkpoint_folders[0])
+        trainer_state_path = os.path.join(checkpoint_folder, "trainer_state.json")
+        state_path = os.path.join(RESULTS_DIR, f"states.ts_{number_of_training_samples}-bs_{batch_size}-lr_{learning_rate}.json")
+        if os.path.exists(trainer_state_path):
+            # os.rename(trainer_state_path, state_path)
+            # logging.info(f"Trainer state saved to {state_path}")
+            os.system(f"cp {trainer_state_path} {state_path}")
+            logging.info(f"Trainer state copied to {state_path}")
+        else:
+            logging.warning(f"Trainer state not found in {checkpoint_folder}")
+
+
     # Evaluate the model
     # Print model dtype
     logging.info(f"Model dtype: {model.dtype}")
@@ -140,9 +164,6 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
             param.data = param.data.to(torch.bfloat16)
             if param.grad is not None:
                 param.grad.data = param.grad.data.to(torch.bfloat16)
-            logging.info(f"Adapter {name} dtype: {param.dtype}")
-        else:
-            logging.info(f"Model {name} dtype: {param.dtype}")
 
     results_path = os.path.join(RESULTS_DIR, "results.tsv")
     if not os.path.exists(results_path):
@@ -154,8 +175,7 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
 
     number_of_test_samples = len(test_dataset)
 
-    # answer_output_path = os.path.join(RESULTS_DIR, f"answers.epoch_{epochs}-ts_{number_of_training_samples}-bs_{batch_size}.json")
-    answer_output_path = os.path.join(RESULTS_DIR, f"answers.test.json")
+    answer_output_path = os.path.join(RESULTS_DIR, f"answers.ts_{number_of_training_samples}-bs_{batch_size}-lr_{learning_rate}.json") if EXPERIMENT == "adapter" else os.path.join(RESULTS_DIR, f"answers.temp.json")
     results = evaluate_model(model, tokenizer, test_dataset, answers_output_path=answer_output_path)
     results["model"] = MODEL_ID
     results["experiment"] = EXPERIMENT
@@ -164,18 +184,21 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
         results["training_time"] = 0
         results["epochs"] = 0
         results["batch_size"] = 0
+        results["learning_rate"] = 0
     else:
         results["experiment"] = "adapter"
         results["trained_samples"] = number_of_training_samples
         results["training_time"] = training_time
         results["epochs"] = epochs
         results["batch_size"] = batch_size
+        results["learning_rate"] = learning_rate
     results["evaluated_samples"] = number_of_test_samples
 
     results_df = pd.read_csv(results_path, sep="\t")
     results_df.loc[len(results_df)] = results
     results_df.to_csv(results_path, index=False, sep="\t")
     logging.info(f"Results saved to {results_path}")
+
 
     # model = None
     # tokenizer = None
@@ -421,24 +444,39 @@ def evaluate_model(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, eval_d
 if __name__ == "__main__":
 
     # Cartesian combinations
-    # epochs = [5, 15]
-    # batch_size = [1]
-    # number_of_training_samples = [1000]
-    # combinations = list(itertools.product(epochs, batch_size, number_of_training_samples))
+    epochs = [15]
+    batch_size = [1, 2]
+    number_of_training_samples = [200, -1]
+    learning_rates = [1e-4, 3e-5, 1e-3]
+    combinations = list(itertools.product(number_of_training_samples, batch_size, learning_rates, epochs))
 
     # Manual combinations
-    combinations = [
-        (2, 1, 4), # To test eval strategy
-    ]
+    # combinations = [
+    # ]
 
-    for e, b, n in combinations:
+    for n, b, l, e in combinations:
         logging.info("===================================")
         logging.info("===================================")
-        logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}")
-        main(epochs=e, batch_size=b, number_of_training_samples=n)
+        logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}, learning_rate={l}")
+        main(epochs=e, batch_size=b, number_of_training_samples=n, learning_rate=l)
         logging.info("Experiment finished")
         logging.info("===================================")
         logging.info("===================================")
         logging.info("===================================")
 
-    # main()
+    # Cartesian combinations
+    epochs = [15]
+    batch_size = [1, 2, 4]
+    number_of_training_samples = [50, 200, 1000, -1]
+    learning_rates = [1e-4, 3e-5, 1e-3]
+    combinations = list(itertools.product(epochs, batch_size, number_of_training_samples, learning_rates))
+
+    for e, b, n, l in combinations:
+        logging.info("===================================")
+        logging.info("===================================")
+        logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}, learning_rate={l}")
+        main(epochs=e, batch_size=b, number_of_training_samples=n, learning_rate=l)
+        logging.info("Experiment finished")
+        logging.info("===================================")
+        logging.info("===================================")
+        logging.info("===================================")

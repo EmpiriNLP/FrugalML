@@ -1,2 +1,2 @@
-model	experiment	trained_samples	epochs	batch_size	evaluated_samples	accuracy	avg_similarity	total_time	avg_time_per_sample	training_time
-meta-llama/Llama-3.1-8B-Instruct	adapter	4	2	1	1133	0.09	0.17	1243.7525	1.0978	100.084
+model	experiment	trained_samples	batch_size	learning_rate	epochs	evaluated_samples	accuracy	avg_similarity	total_time	avg_time_per_sample	training_time
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.1	70.69	984.7597	0.8692	0
