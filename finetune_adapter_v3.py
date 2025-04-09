@@ -445,8 +445,8 @@ if __name__ == "__main__":
 
     # Cartesian combinations
     epochs = [15]
-    batch_size = [1, 2]
-    number_of_training_samples = [200, -1]
+    batch_size = [1, 2, 4]
+    number_of_training_samples = [50, 200, 1000, -1]
     learning_rates = [1e-4, 3e-5, 1e-3]
     combinations = list(itertools.product(number_of_training_samples, batch_size, learning_rates, epochs))
 
@@ -455,23 +455,6 @@ if __name__ == "__main__":
     # ]
 
     for n, b, l, e in combinations:
-        logging.info("===================================")
-        logging.info("===================================")
-        logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}, learning_rate={l}")
-        main(epochs=e, batch_size=b, number_of_training_samples=n, learning_rate=l)
-        logging.info("Experiment finished")
-        logging.info("===================================")
-        logging.info("===================================")
-        logging.info("===================================")
-
-    # Cartesian combinations
-    epochs = [15]
-    batch_size = [1, 2, 4]
-    number_of_training_samples = [50, 200, 1000, -1]
-    learning_rates = [1e-4, 3e-5, 1e-3]
-    combinations = list(itertools.product(epochs, batch_size, number_of_training_samples, learning_rates))
-
-    for e, b, n, l in combinations:
         logging.info("===================================")
         logging.info("===================================")
         logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}, learning_rate={l}")
