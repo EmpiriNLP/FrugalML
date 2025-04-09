@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 models
 
+results/FinQA/answers.**.json
+
 # C extensions
 *.so
 
