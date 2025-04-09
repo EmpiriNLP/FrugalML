@@ -34,6 +34,10 @@ EXPERIMENT = "adapter" # "adapter" or "baseline"
 def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1):
     model, tokenizer = load_model(MODEL_ID, DEVICE, ACCESS_TOKEN, MODEL_DIR)
     train_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/train.cleaned.json", split="train")
+    # val_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/dev.cleaned.json", split="train")
+    # test_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/test.cleaned.json", split="test")
+
+    sys.exit(0)
 
     # epochs = [1, 5, 15]
     # batch_size = [1, 2, 4]
@@ -70,7 +74,6 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
         train_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"], device=DEVICE) 
 
 
-        # eval_dataset = train_dataset.select(range(22))
         train_dataset = train_dataset.select(range(number_of_training_samples))
 
         model.add_adapter("finance_adapter", config="seq_bn")
@@ -88,12 +91,13 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
 
         training_args = TrainingArguments(
             learning_rate=1e-4,
+            warmup_steps=100,
             num_train_epochs=epochs,
             per_device_train_batch_size=1,
-            # per_device_eval_batch_size=2,
+            per_device_eval_batch_size=1,
             output_dir="./models/adapter",
             overwrite_output_dir=True,
-            # eval_strategy="epoch",
+            eval_strategy="epoch",
             logging_dir="./logs",
             logging_steps=10,
             # save_steps=10,
@@ -101,17 +105,18 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
             remove_unused_columns=False,
             dataloader_pin_memory=False,
             # label_smoothing_factor=0.1, # To enable default label smoothing loss function
-            save_strategy="epoch",
-            save_total_limit=3,
-            # metric_for_best_model="exact_match_accuracy",
-            # greater_is_better=True,
+            save_strategy="best",
+            # save_total_limit=3,
+            metric_for_best_model="exact_match_accuracy",
+            greater_is_better=True,
+            load_best_model_at_end=True,
         )
 
         trainer = AdapterTrainer(
             model=model,
             args=training_args,
             train_dataset=train_dataset,
-            # eval_dataset=train_dataset,
+            eval_dataset=val_dataset,
             compute_metrics=compute_accuracy,
             # compute_loss_func=compute_loss
         )
@@ -119,9 +124,10 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
         logging.info("Starting Training")
         start = time.time()
         trainer.train()
-        # trainer.evaluate()
         end = time.time()
         training_time = round(end - start, 4)
+
+        # trainer.evaluate()
 
     # Evaluate the model
     results_path = os.path.join(RESULTS_DIR, "results.tsv")
@@ -130,12 +136,10 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
         results_df = pd.DataFrame(columns=RESULTS_HEADER)
         results_df.to_csv(results_path, index=False, sep="\t")
 
-    eval_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/train.cleaned.json", split="train")
-    number_of_eval_samples = 22
-    eval_dataset = eval_dataset.select(range(number_of_eval_samples))
+    number_of_test_samples = len(test_dataset)
 
     answer_output_path = os.path.join(RESULTS_DIR, f"answers.epoch_{epochs}-ts_{number_of_training_samples}-bs_{batch_size}.json")
-    results = evaluate_model(model, tokenizer, eval_dataset, answers_output_path=answer_output_path)
+    results = evaluate_model(model, tokenizer, test_dataset, answers_output_path=answer_output_path)
     results["model"] = MODEL_ID
     results["experiment"] = EXPERIMENT
     if results["experiment"] == "baseline":
@@ -149,7 +153,7 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
         results["training_time"] = training_time
         results["epochs"] = epochs
         results["batch_size"] = batch_size
-    results["evaluated_samples"] = number_of_eval_samples
+    results["evaluated_samples"] = number_of_test_samples
 
     results_df = pd.read_csv(results_path, sep="\t")
     results_df.loc[len(results_df)] = results
@@ -207,8 +211,8 @@ def load_model(model_id, device, token, cache_dir):
 
 def preprocess_function(example):
     # TODO: should raise error or warning when absent
-    question = example["qa"].get("question", "No question available.")
-    expected_answer = str(example['qa'].get("answer", "")).strip()
+    question = example["qa"]["question"]
+    expected_answer = example['qa']["answer"]
     table = example.get("table", [])
     table_str = "\n".join([" | ".join(row) for row in table])
 
@@ -400,11 +404,7 @@ if __name__ == "__main__":
 
     # Manual combinations
     combinations = [
-        (15, 2, 200), # best so far
-        (5, 2, 200), # less epochs
-        (15, 2, 1000), # more samples
-        (5, 4, 200), # more batch size
-        (5, 1, 200), # less batch size
+        (5, 1, 1), # To test eval strategy
     ]
 
     for e, b, n in combinations:
