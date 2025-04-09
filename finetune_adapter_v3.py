@@ -17,6 +17,8 @@ import json
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
+
 ACCESS_TOKEN = os.getenv("HUGGINGFACE_API_KEY")
 MODEL_DIR = os.getcwd() + "/models"
 MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
@@ -32,12 +34,10 @@ EXPERIMENT = "adapter" # "adapter" or "baseline"
 
 
 def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1):
+    torch.cuda.empty_cache()
     model, tokenizer = load_model(MODEL_ID, DEVICE, ACCESS_TOKEN, MODEL_DIR)
     train_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/train.cleaned.json", split="train")
-    # val_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/dev.cleaned.json", split="train")
-    # test_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/test.cleaned.json", split="test")
-
-    sys.exit(0)
+    val_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/dev.cleaned.json", split="train")
 
     # epochs = [1, 5, 15]
     # batch_size = [1, 2, 4]
@@ -70,11 +70,12 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
 
 
         train_dataset = train_dataset.map(preprocess_to_finetune, batched=True, batch_size=batch_size)
-        # train_dataset = train_dataset.rename_column(original_column_name="expected_answer", new_column_name="labels")
         train_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"], device=DEVICE) 
-
+        val_dataset = val_dataset.map(preprocess_to_finetune, batched=True, batch_size=batch_size)
+        val_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"], device=DEVICE)
 
         train_dataset = train_dataset.select(range(number_of_training_samples))
+        val_dataset = val_dataset.select(range(100)) # For evaluation
 
         model.add_adapter("finance_adapter", config="seq_bn")
         model.add_causal_lm_head("finance_adapter")
@@ -105,10 +106,11 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
             remove_unused_columns=False,
             dataloader_pin_memory=False,
             # label_smoothing_factor=0.1, # To enable default label smoothing loss function
-            save_strategy="best",
-            # save_total_limit=3,
-            metric_for_best_model="exact_match_accuracy",
-            greater_is_better=True,
+            save_strategy="epoch",
+            save_total_limit=2,
+            metric_for_best_model="eval_loss",
+            # metric_for_best_model="token_accuracy",
+            # greater_is_better=False,
             load_best_model_at_end=True,
         )
 
@@ -116,8 +118,8 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
             model=model,
             args=training_args,
             train_dataset=train_dataset,
-            eval_dataset=val_dataset,
-            compute_metrics=compute_accuracy,
+            eval_dataset=train_dataset,
+            # compute_metrics=compute_accuracy,
             # compute_loss_func=compute_loss
         )
 
@@ -130,15 +132,30 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1)
         # trainer.evaluate()
 
     # Evaluate the model
+    # Print model dtype
+    logging.info(f"Model dtype: {model.dtype}")
+    # Turn adapter layers to bfloat16
+    for name, param in model.named_parameters():
+        if "finance_adapter" in name:
+            param.data = param.data.to(torch.bfloat16)
+            if param.grad is not None:
+                param.grad.data = param.grad.data.to(torch.bfloat16)
+            logging.info(f"Adapter {name} dtype: {param.dtype}")
+        else:
+            logging.info(f"Model {name} dtype: {param.dtype}")
+
     results_path = os.path.join(RESULTS_DIR, "results.tsv")
     if not os.path.exists(results_path):
         os.makedirs(RESULTS_DIR, exist_ok=True)
         results_df = pd.DataFrame(columns=RESULTS_HEADER)
         results_df.to_csv(results_path, index=False, sep="\t")
 
+    test_dataset = load_preprocessed_dataset("json", data_files=DATASET_DIR+"/test.cleaned.json", split="train")
+
     number_of_test_samples = len(test_dataset)
 
-    answer_output_path = os.path.join(RESULTS_DIR, f"answers.epoch_{epochs}-ts_{number_of_training_samples}-bs_{batch_size}.json")
+    # answer_output_path = os.path.join(RESULTS_DIR, f"answers.epoch_{epochs}-ts_{number_of_training_samples}-bs_{batch_size}.json")
+    answer_output_path = os.path.join(RESULTS_DIR, f"answers.test.json")
     results = evaluate_model(model, tokenizer, test_dataset, answers_output_path=answer_output_path)
     results["model"] = MODEL_ID
     results["experiment"] = EXPERIMENT
@@ -249,6 +266,7 @@ def load_preprocessed_dataset(path: str, data_files: str, split: str):
 
 def generate_answer(input_text, tokenizer: AutoTokenizer, model: AutoModelForCausalLM):
     inputs = tokenizer(input_text, return_tensors="pt", truncation=True).to(DEVICE)
+    inputs["input_ids"] = inputs["input_ids"].to(torch.long)  # Ensure input IDs are of type torch.long
     input_ids = inputs["input_ids"]
 
     with torch.no_grad():
@@ -293,31 +311,37 @@ def clean_answer(text):
 
 
 def compute_accuracy(p: EvalPrediction):
-    # (1, 881, 128256), which is (batch, sequence, vocab)
-    predicted_answer = p.predictions[0]
-    # (881, ), where majority are -100, masked input tokens, only the last or last few tokens are token ids
-    expected_answer = p.label_ids[0]
+    # (b, 881, 128256), which is (batch, sequence, vocab)
+    predicted_answers = p.predictions
+    # (b, 881), where majority are -100, masked input tokens, only the last or last few tokens are token ids
+    expected_answers = p.label_ids
 
     # Mask out the -100 labels from predicted_answer and expected_answer
-    mask = expected_answer != -100
-    predicted_answer = predicted_answer[mask] 
-    expected_answer = expected_answer[mask]
+    mask = expected_answers != -100
+    predicted_answers = predicted_answers[mask] 
+    expected_answers = expected_answers[mask]
 
-    # Calculate accuracy as 0/1 with exact match
+    # Calculate accuracy as 0/1 with exact match, over the entire batch
     correct_predictions = 0
-    for i in range(len(predicted_answer)):
-        predicted_answer_ids = torch.argmax(predicted_answer[i], dim=-1)
-        # Convert expected_answer to token ids
-        expected_answer_ids = expected_answer[i]
+    print("*"*20)
+    for i in range(predicted_answers.shape[0]):
+        predicted_answer_ids = torch.argmax(torch.from_numpy(predicted_answers[i]), dim=-1)
+        expected_answer_ids = torch.Tensor([expected_answers[i]])
 
-        # Check if the predicted answer matches the expected answer
+        # Compare the predicted answer with the expected answer
         if torch.equal(predicted_answer_ids, expected_answer_ids):
             correct_predictions += 1
-    accuracy = correct_predictions / len(predicted_answer)
+
+        print(f"Predicted: {predicted_answer_ids}, \nExpected: {expected_answer_ids}")
+    print("*"*20)
+
+    # Calculate accuracy
+    accuracy = correct_predictions / len(predicted_answers)
+
     return {
-        "exact_match_accuracy": accuracy,
-        "mask_length": mask.sum().item(),
-        "answer_length": len(predicted_answer),
+        "token_accuracy": accuracy,
+        "avg_mask_length": mask.sum().item() / len(mask),
+        "avg_answer_length": (expected_answers != -100).sum().item() / len(expected_answers),
     }
 
 def compute_loss(outputs, labels, num_items_in_batch):
@@ -404,7 +428,7 @@ if __name__ == "__main__":
 
     # Manual combinations
     combinations = [
-        (5, 1, 1), # To test eval strategy
+        (2, 1, 4), # To test eval strategy
     ]
 
     for e, b, n in combinations:
