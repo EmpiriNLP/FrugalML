@@ -77,7 +77,7 @@ def main(epochs: int =1, batch_size: int =1, number_of_training_samples: int =1,
         if number_of_training_samples != -1:
             train_dataset = train_dataset.select(range(number_of_training_samples))
 
-        val_dataset = val_dataset.select(range(200)) # For significant loss
+        val_dataset = val_dataset.select(range(100)) # For significant loss
 
         model.add_adapter("finance_adapter", config="seq_bn")
         model.add_causal_lm_head("finance_adapter")
@@ -454,7 +454,14 @@ if __name__ == "__main__":
     # combinations = [
     # ]
 
+    excluded_combinations = [
+        (50, 1, 1e-4, 15),
+        (50, 1, 3e-5, 15),
+    ]
+
     for n, b, l, e in combinations:
+        if (n, b, l, e) in excluded_combinations:
+            continue
         logging.info("===================================")
         logging.info("===================================")
         logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}, learning_rate={l}")
