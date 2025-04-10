@@ -446,7 +446,7 @@ if __name__ == "__main__":
     # Cartesian combinations
     epochs = [15]
     batch_size = [1, 2, 4]
-    number_of_training_samples = [50, 200, 1000, -1]
+    number_of_training_samples = [200, 1000, -1]
     learning_rates = [1e-4, 3e-5, 1e-3]
     combinations = list(itertools.product(number_of_training_samples, batch_size, learning_rates, epochs))
 
@@ -455,8 +455,9 @@ if __name__ == "__main__":
     # ]
 
     excluded_combinations = [
-        (50, 1, 1e-4, 15),
-        (50, 1, 3e-5, 15),
+        (200, 1, 1e-4, 15),
+        (200, 1, 3e-5, 15),
+        (200, 1, 1e-3, 15),
     ]
 
     for n, b, l, e in combinations:
