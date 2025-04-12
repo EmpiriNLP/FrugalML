@@ -1,0 +1,4 @@
+model	experiment	trained_samples	batch_size	learning_rate	epochs	evaluated_samples	accuracy	avg_similarity	total_time	avg_time_per_sample	training_time
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0.0	0	1133	29.48	64.76	2557.24	2.257	0.0
+meta-llama/Llama-3.1-8B-Instruct	LoRA	6203	1	2e-04	3	1133	31.51	65.57	4079.43	3.600	23645.0111
+meta-llama/Llama-3.1-8B-Instruct	LoRA	6203	2	2e-04	3	1133	31.77	67.22	4362.15	3.850	24125.9567
