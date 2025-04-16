@@ -444,15 +444,20 @@ def evaluate_model(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, eval_d
 if __name__ == "__main__":
 
     # Cartesian combinations
-    epochs = [15]
-    batch_size = [4]
-    number_of_training_samples = [1000]
-    learning_rates = [3e-5, 1e-3]
-    combinations = list(itertools.product(number_of_training_samples, batch_size, learning_rates, epochs))
+    # epochs = [15]
+    # batch_size = [4]
+    # number_of_training_samples = [1000]
+    # learning_rates = [3e-5, 1e-3]
+    # combinations = list(itertools.product(number_of_training_samples, batch_size, learning_rates, epochs))
 
     # Manual combinations
-    # combinations = [
-    # ]
+    combinations = [
+        (-1, 1, 3e-5, 15),
+        (-1, 2, 1e-4, 15),
+        (-1, 2, 3e-5, 15),
+        (-1, 4, 1e-4, 15),
+        (-1, 4, 3e-5, 15),
+    ]
 
     # excluded_combinations = [
     #     (200, 1, 1e-4, 15),
@@ -463,27 +468,6 @@ if __name__ == "__main__":
     for n, b, l, e in combinations:
         # if (n, b, l, e) in excluded_combinations:
         #     continue
-        logging.info("===================================")
-        logging.info("===================================")
-        logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}, learning_rate={l}")
-        main(epochs=e, batch_size=b, number_of_training_samples=n, learning_rate=l)
-        logging.info("Experiment finished")
-        logging.info("===================================")
-        logging.info("===================================")
-        logging.info("===================================")
-
-    # Cartesian combinations
-    epochs = [15]
-    batch_size = [1, 2, 4]
-    number_of_training_samples = [-1]
-    learning_rates = [1e-4, 3e-5, 1e-3]
-    combinations = list(itertools.product(number_of_training_samples, batch_size, learning_rates, epochs))
-
-    # Manual combinations
-    # combinations = [
-    # ]
-
-    for n, b, l, e in combinations:
         logging.info("===================================")
         logging.info("===================================")
         logging.info(f"Running experiment with epochs={e}, batch_size={b}, number_of_training_samples={n}, learning_rate={l}")
