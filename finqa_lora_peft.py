@@ -102,7 +102,6 @@ def calculate_accuracy_similarity(reference_answers, generated_answers):
         print()
         print("************************************************************************")
         print (f"*** Input {total_samples} *** ")
-    #    print(example["input_text"])
         print ("*** Expected answer *** ")
         print(reference_answer)
         print ("*** Clean Expected answer *** ")
