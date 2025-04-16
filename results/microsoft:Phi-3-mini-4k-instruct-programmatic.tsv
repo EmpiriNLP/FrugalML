@@ -1,0 +1,2 @@
+model	experiment	trained_samples	batch_size	learning_rate	epochs	evaluated_samples	accuracy	avg_similarity	total_time	avg_time_per_sample	training_time
+microsoft/Phi-3-mini-4k-instruct	programmatic	0	0	0	0	1133	50.57	66.11	6890.9005	6.082	0

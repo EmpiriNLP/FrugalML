@@ -1,0 +1,17 @@
+model	experiment	trained_samples	batch_size	learning_rate	epochs	evaluated_samples	accuracy	avg_similarity	total_time	avg_time_per_sample	training_time
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.72	70.46	1367.5525	1.207	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.63	70.61	1370.3215	1.2095	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.81	70.58	1362.5191	1.2026	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.36	70.44	1386.8077	1.224	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	38.75	70.37	1390.8398	1.2276	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.45	70.65	1384.4023	1.2219	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.19	70.43	1384.9458	1.2224	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.54	70.65	1383.4584	1.2211	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.1	70.52	1383.8447	1.2214	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.1	70.57	1382.7205	1.2204	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.1	70.49	1381.1216	1.219	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	38.92	70.52	1383.8373	1.2214	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.1	70.32	1382.3679	1.2201	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.36	70.46	1385.4174	1.2228	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.19	70.49	1385.4063	1.2228	0
+meta-llama/Llama-3.1-8B-Instruct	baseline	0	0	0	0	1133	39.19	70.39	1388.8306	1.2258	0

@@ -1,0 +1,2 @@
+model	experiment	trained_samples	batch_size	learning_rate	epochs	evaluated_samples	accuracy	avg_similarity	total_time	avg_time_per_sample	training_time
+gpt-4o	baseline	0	0	0	0	1133	63.28	76.25	882.6047	0.779	0

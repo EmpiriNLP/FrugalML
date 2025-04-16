@@ -1,0 +1,5 @@
+model	experiment	trained_samples	batch_size	learning_rate	epochs	evaluated_samples	accuracy	avg_similarity	total_time	avg_time_per_sample	training_time
+microsoft/Phi-3-mini-4k-instruct	baseline	0	0	0	0	1133	13.5	50.12	364.7985	0.322	0
+microsoft/Phi-3-mini-4k-instruct	baseline	0	0	0	0	1133	13.5	50.12	362.8563	0.3203	0
+microsoft/Phi-3-mini-4k-instruct	baseline	0	0	0	0	1133	13.5	50.12	363.5337	0.3209	0
+microsoft/Phi-3-mini-4k-instruct	baseline	0	0	0	0	1133	13.5	50.12	363.4712	0.3208	0

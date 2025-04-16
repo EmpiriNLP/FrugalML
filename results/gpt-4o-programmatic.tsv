@@ -1,0 +1,2 @@
+model	experiment	trained_samples	batch_size	learning_rate	epochs	evaluated_samples	accuracy	avg_similarity	total_time	avg_time_per_sample	training_time
+gpt-4o	programmatic	0	0	0	0	1133	70.17	80.37	3053.6097	2.6952	0
